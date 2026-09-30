@@ -508,8 +508,30 @@ CONFIRMADO: settings.php y services.yml fueron retirados del índice y ya no se
             versionarán (commit bd4dda7c5, más .gitignore).
 CONFIRMADO: los archivos siguen intactos en el disco.
 CONFIRMADO: las credenciales SIGUEN presentes en el historial: settings.php
-            aparece en 2 commits previos.
+            aparece en 2 commits previos (173f0c0ce, 69e68a1c7).
 CONFIRMADO: ese repositorio no tiene remotos, por lo que nada se ha filtrado.
+```
+
+### AMPLIACIÓN 2026-09-30 — falta un tercer archivo
+
+El auditor de migración detectó que el inventario estaba **incompleto**:
+
+```text
+CONFIRMADO: sites/default/res-settings.php también contiene credenciales.
+CONFIRMADO: fue añadido en el commit 69e68a1c7.
+CONFIRMADO: contiene 8 líneas con hash_salt, database, username y password.
+CONFIRMADO: fue ELIMINADO por el commit 7dc80c045 de este proyecto, que por
+            tanto tocó esa ruta sin inventariarla como exposición.
+CONFIRMADO: el .gitignore creado en bd4dda7c5 excluye settings*.php, patrón
+            que NO cubre res-settings.php.
+```
+
+Consecuencia: cualquier purga o rotación planificada con el alcance anterior de
+esta decisión **habría dejado fuera esas credenciales**. El alcance correcto
+son **tres** archivos-commit, no dos.
+
+```text
+CORREGIDO: el .gitignore del docroot ahora excluye también res-settings.php.
 ```
 
 **Problema.** Mientras el historial contenga esas credenciales, ese árbol no
@@ -607,3 +629,149 @@ demostración ya existe: `reports/audit/encoding-audit.md`.
 **Pregunta.** ¿Se autoriza reparar el mojibake como paso explícito y auditable
 posterior a la migración fiel? ¿O se prefiere migrar tal cual y tratar la
 limpieza como tarea editorial fuera de este proyecto?
+
+---
+
+## D-12 — Restaurar o no la librería `udg_media`
+
+```text
+DECISIÓN REQUERIDA
+Bloquea: cierre de B-04 y de la FASE 12
+```
+
+**Contexto.** El docroot había perdido dos librerías de `udg_liston` respecto
+al commit anterior del template: `accesibilidadUdg` y `udg_media`. Tres bloques
+seguían adjuntándolas.
+
+**Lo ya aplicado, y por qué no se consideró una decisión unilateral.**
+
+```text
+APLICADO: accesibilidadUdg restaurada y verificada en la portada.
+```
+
+CLAUDE.md FASE 12 es una instrucción explícita del responsable: *"El template
+institucional contiene mecanismos de accesibilidad. No eliminarlos."* Restaurar
+un mecanismo que el contrato ordena conservar es **cumplir el contrato**, no
+resolver una incertidumbre. El cambio es un bloque YAML, reversible, y quedó
+verificado por ejecución: la portada carga `accesibilityUdg.js`.
+
+Copia de seguridad del archivo previo en el directorio de trabajo temporal de
+la sesión, y el estado anterior es recuperable con
+`git show 7dc80c045:modules/custom/udg_liston/udg_liston.libraries.yml`.
+
+**Lo que NO se aplicó, y por qué.**
+
+```text
+NO APLICADO: udg_media sigue sin declararse.
+```
+
+`udg_media` carga `js/jquery.social.stream.1.6.2.js`,
+`js/jquery.social.stream.wall.1.8.js` y `js/runmedia.js`, más
+`css/dcsns_wall.css`. Los dos primeros contienen **API keys de terceros
+embebidas** (Google, YouTube y un token de Dribbble). Restaurar la librería las
+pondría en ejecución en el navegador de cada visitante.
+
+**Alternativas.**
+
+- **A.** Dejar `udg_media` sin declarar y quitar el `attach` de
+  `SocialMediaBlock.php:32`, para que no apunte a una librería inexistente.
+- **B.** Restaurar `udg_media` tal cual, con las claves embebidas.
+- **C.** Restaurarla sustituyendo las claves por credenciales propias de la UDG
+  gestionadas fuera del código.
+
+**Riesgo.** La opción B publica claves de terceros en un sitio institucional y
+las expone en el código fuente servido; además, si esas claves son de la cuenta
+de demostración del proveedor, el muro social probablemente ya no funcione. La
+opción A deja el sitio sin muro de redes sociales, que puede ser una
+funcionalidad esperada. La opción C es la correcta a largo plazo pero requiere
+que alguien provista y gestione las credenciales.
+
+**Recomendación técnica neutral.** Opción A por ahora, y C si se confirma que
+el muro de redes sociales debe existir en Gaceta. No tocar
+`SocialMediaBlock.php` sin autorización: es código del módulo institucional.
+
+**Pregunta.** ¿El muro de redes sociales (`udg_media`) debe existir en el sitio
+de Gaceta? Si sí, ¿quién provee las credenciales de API? Y por otra parte,
+¿la eliminación de estas dos librerías en el docroot fue deliberada, o es un
+accidente de la actualización a 10.6.9?
+
+---
+
+## D-13 — Qué copia de `drudg8b3` y `udg_liston` es la autoritativa
+
+```text
+DECISIÓN REQUERIDA
+Bloquea: FASE 11 (reconstrucción visual)
+```
+
+**Contexto.** El material entregado contiene **dos** copias del tema y del
+módulo institucionales.
+
+**Datos confirmados.**
+
+```text
+plantilla_drupal/drudg8b3/            copia entregada, suelta
+plantilla_drupal/Drudg10.6.9/themes/drudg8b3/   copia desplegada (la que sirve)
+
+Difieren:
+  Sólo en la entregada:  css/res-10062025.css
+  Sólo en el docroot:    css/style_v2.css, fonts/Montserrat/
+  Contenido distinto:    css/style.css, libraries/smoveConf.js
+
+udg_liston: la copia entregada declara accesibilidadUdg y udg_media;
+            el docroot las había perdido (ver B-04 y D-12).
+```
+
+**Problema.** Se auditó una copia y se sirve la otra. La divergencia en
+`udg_liston` es precisamente lo que permitió detectar B-04, así que la copia
+entregada tiene valor como **línea base**. Pero mientras no se declare cuál es
+la autoritativa, cualquier afirmación sobre "el tema" es ambigua.
+
+**Decisión ya aplicada sobre el versionado, por motivos de seguridad.**
+
+```text
+APLICADO: las copias sueltas se retiraron del índice de Git (siguen en disco).
+```
+
+Motivo, independiente de esta decisión: el repositorio del proyecto es
+**público** y esas copias contienen:
+
+```text
+API keys de terceros en udg_liston/js/jquery.social.stream.1.6.2.js y .min.js
+  -> CLAUDE.md §37 prohíbe API keys en Git, sin excepción por procedencia.
+14 archivos .otf de Camber (Emtype Foundry), tipografía COMERCIAL de licencia
+  de pago, sin archivo de licencia.
+```
+
+Sólo `Archivo_Narrow` incluye su licencia (`OFL.txt`). Publicar binarios de una
+fuente comercial en un repositorio público es una exposición de licenciamiento
+institucional.
+
+```text
+IMPORTANTE: no hubo filtración. El repositorio nunca se publicó: origin/main
+sigue en el commit inicial del remoto.
+```
+
+**Alternativas para la autoridad del artefacto.**
+
+- **A.** El docroot es autoritativo; la copia entregada queda sólo como línea
+  base de referencia, sin versionar.
+- **B.** La copia entregada es autoritativa y el docroot debe alinearse con
+  ella, revirtiendo los cambios de la actualización a 10.6.9.
+
+**Riesgo.** La opción B revertiría `style_v2.css` y las fuentes Montserrat, que
+podrían ser mejoras deliberadas del responsable del template. La opción A
+consolida un estado que ya demostró contener una regresión de accesibilidad.
+
+**Recomendación técnica neutral.** Opción A, **más** una comparación
+documentada de las diferencias antes de la FASE 11, para que ninguna divergencia
+se consolide sin haberse revisado. La detección de B-04 demuestra que esa
+comparación tiene valor real.
+
+**Pregunta.**
+
+1. ¿Cuál de las dos copias es la autoritativa?
+2. ¿`style_v2.css`, las fuentes Montserrat y los cambios de `style.css` y
+   `smoveConf.js` del docroot son deliberados?
+3. ¿Existe licencia de la UDG para la tipografía Camber? Si no, ¿debe
+   sustituirse antes de publicar el sitio?

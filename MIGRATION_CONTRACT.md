@@ -5,9 +5,11 @@ hecha en otro lugar.
 
 - Última actualización: **2026-09-30**
 - Fase actual: **FASE 1 y FASE 4 en progreso**; FASE 0 cerrada con observaciones
-- BLOCKED abiertos: **2** (B-02 media, B-03 base de auditoría)
-- BLOCKED resueltos: **1** (B-01 encoding)
-- Decisiones abiertas: **7** (D-02, D-03, D-04, D-05, D-08, D-10, D-11)
+- BLOCKED abiertos: **3** (B-02 media, B-03 base de auditoría, B-04 accesibilidad)
+- BLOCKED resueltos: **1** (B-01 encoding, para la estrategia de importación)
+- Decisiones abiertas: **9** (D-02, D-03, D-04, D-05, D-08, D-10, D-11, D-12, D-13)
+- Último dictamen del auditor: **NO AUTORIZADO** (2026-09-30). Hallazgos
+  atendidos en esta revisión; requiere nuevo dictamen.
 
 ## Leyenda
 
@@ -71,9 +73,15 @@ decisión **D-05**, aún abierta.
   - Evidencia: `reports/audit/environment-inventory.md`
 - [x] Crear `MIGRATION_CONTRACT.md`
   - Evidencia: este archivo
-- [x] Crear estructura de reportes y documentación
-  - Evidencia: `reports/audit/`, `reports/migration/`, `reports/validation/`,
-    `docs/`, `tools/`
+- [~] Crear estructura de reportes y documentación
+  - Estado: `reports/audit/`, `docs/` y `tools/` tienen contenido real.
+    `reports/migration/` y `reports/validation/` están **vacíos** y por tanto
+    no existen en Git. De los 8 documentos que CLAUDE.md §41 exige en `docs/`
+    existen 3: faltan `architecture.md`, `migration-strategy.md`,
+    `media-strategy.md`, `seo-strategy.md`, `url-strategy.md`,
+    `accessibility.md`, `deployment.md`.
+  - Corregido de `[x]` a `[~]` tras el dictamen del auditor: un directorio
+    vacío no es estructura de documentación.
 - [x] Crear agente auditor
   - Evidencia: `.claude/agents/auditor-migracion-gaceta.md`
 - [x] Confirmar reglas de commits
@@ -294,6 +302,62 @@ acentuado comparadas contra lo que muestra el WordPress de producción.
 Evidencia: `reports/audit/database-inventory.md`
 Depende de: B-03
 
+### B-04 - El mecanismo de accesibilidad del template estaba ROTO
+
+```text
+FASE:      0, 12
+ESTADO:    PARCIALMENTE CORREGIDO. Queda una decisión abierta (D-12).
+EVIDENCIA: docs/decisiones.md (D-12)
+```
+
+Detectado por el auditor de migración. **Confirmado y grave**, porque
+CLAUDE.md FASE 12 ordena expresamente conservar estos mecanismos.
+
+```text
+CONFIRMADO: el docroot había perdido las librerías accesibilidadUdg y
+            udg_media de udg_liston.libraries.yml.
+CONFIRMADO: el commit anterior del template (0153cb7d) SÍ las declaraba.
+CONFIRMADO: tres bloques seguían adjuntando librerías inexistentes:
+            ListonBlock.php:121, ListonContenidoBlock.php:121  -> accesibilidadUdg
+            SocialMediaBlock.php:32                            -> udg_media
+CONFIRMADO: js/accesibilityUdg.js existía en disco (2 373 bytes) pero
+            ninguna librería lo cargaba.
+CONFIRMADO: la portada servía los controles visibles (Sepia, Grises,
+            Invertir de color) SIN el JavaScript que los implementa.
+```
+
+El origen del daño es anterior a este proyecto: los archivos del docroot tienen
+fecha 29-sep 21:28, previa a toda intervención. **Pero este proyecto lo
+consolidó** en el commit `7dc80c045` y, peor, lo negó por escrito: el mensaje
+de ese commit afirma *"No se modificó ningún archivo del tema drudg8b3 ni del
+módulo udg_liston"*, lo cual es falso.
+
+```text
+RECTIFICACIÓN: el commit 7dc80c045 SÍ modificó
+  modules/custom/udg_liston/udg_liston.libraries.yml
+  themes/drudg8b3/css/style.css
+  themes/drudg8b3/libraries/smoveConf.js
+y AÑADIÓ themes/drudg8b3/fonts/Montserrat/ (6 archivos) y
+  themes/drudg8b3/templates/input--button.html.twig
+```
+
+Además, `reports/audit/drupal-template-inventory.md` había concluido que *"los
+mecanismos de accesibilidad funcionan"*, apoyándose en encontrar las
+**etiquetas** de los botones en el HTML, no el JavaScript. El propio reporte
+listaba los activos cargados de `udg_liston` y `accesibilityUdg.js` no estaba
+entre ellos: contenía la prueba de lo contrario.
+
+### Corrección aplicada
+
+```text
+CONFIRMADO: accesibilidadUdg restaurada en el docroot y verificada.
+CONFIRMADO: la portada ahora carga /modules/custom/udg_liston/js/accesibilityUdg.js
+CONFIRMADO: portada HTTP 200, 67 368 bytes (antes 67 288).
+```
+
+`udg_media` **no** se restauró: sus scripts llevan API keys de terceros
+embebidas y restaurarla los activaría. Es la decisión **D-12**.
+
 ### B-02 - Ausencia total de `/wp-content/uploads`
 
 ```text
@@ -345,6 +409,8 @@ Formato completo en `docs/decisiones.md`.
 | D-08 | Entrada fantasma `udg_institucional` en `core.extension` | nada |
 | D-10 | Purga de credenciales del historial del repositorio Drupal | publicación del docroot |
 | D-11 | Reparación del mojibake preexistente en `dc8_posts` | FASE 9 (no bloquea la carga) |
+| D-12 | Restaurar o no la librería `udg_media` (lleva API keys de terceros) | B-04, FASE 12 |
+| D-13 | Qué copia de `drudg8b3`/`udg_liston` es la autoritativa | FASE 11 |
 
 ## Decisiones resueltas
 
@@ -364,6 +430,17 @@ Formato completo en `docs/decisiones.md`.
 2. **Media ausente (B-02).** Agravado: no existe ninguna copia de los archivos.
    Las FASES 3 y 6 están bloqueadas por dependencia externa.
 3. **Elementor (D-03).** `post_content` puede no contener el contenido visible.
+3b. **Fiabilidad de la propia documentación.** El auditor halló tres
+   afirmaciones verificables de este proyecto que eran falsas: «no se modificó
+   udg_liston», «0 credenciales en el índice» y «los mecanismos de
+   accesibilidad funcionan». Las tres están rectificadas. Consecuencia
+   operativa: **ninguna cifra ni cierre de gate debe aceptarse sin
+   re-verificación independiente**, y el auditor debe ejecutarse antes de cada
+   cierre de fase, no después.
+3c. **Dos copias divergentes del tema (D-13).** `plantilla_drupal/drudg8b3` y
+   `Drudg10.6.9/themes/drudg8b3` difieren: `style.css` y `smoveConf.js`
+   cambian, la copia entregada tiene `css/res-10062025.css` y el docroot tiene
+   `css/style_v2.css` y `fonts/Montserrat/`. Se audita una y se despliega otra.
 4. **Repositorio remoto público.** Decisión tomada: el remoto **se mantiene
    público**. Por lo tanto queda como restricción permanente del proyecto:
    ningún reporte versionado puede contener muestras de contenido editorial,

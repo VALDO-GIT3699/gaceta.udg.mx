@@ -118,7 +118,14 @@ Activos verificados en la portada renderizada:
 /modules/custom/udg_liston/js/udg_slideshow.js
 ```
 
-## Accesibilidad — verificada en el HTML servido (§12)
+## Accesibilidad — CORREGIDO: estaba ROTA
+
+```text
+REVISIÓN: esta sección afirmaba que la accesibilidad "funciona". Era FALSO.
+Detectado por el auditor de migración. Ver MIGRATION_CONTRACT.md, B-04.
+```
+
+Lo que se observó en el HTML servido:
 
 ```text
 CONFIRMADO presentes: Sepia, Grises, Invertir de color
@@ -126,8 +133,50 @@ CONFIRMADO presentes: skip-link, visually-hidden
 CONFIRMADO presentes: aria-current, aria-hidden, aria-labelledby
 ```
 
-Los mecanismos de accesibilidad del template **funcionan** y no deben
-eliminarse.
+### El error de razonamiento
+
+De ahí se concluyó que los mecanismos "funcionan". **No se sigue.** Lo
+observado eran las **etiquetas de los botones**, no el JavaScript que los
+implementa. Sepia, Grises e Invertir de color son controles que requieren
+`accesibilityUdg.js` para hacer algo.
+
+Peor: la lista de activos de `udg_liston` cargados en la portada, unas líneas
+más arriba en este mismo reporte, **no incluía `accesibilityUdg.js`**. El
+reporte contenía la prueba de lo contrario y extrajo la conclusión opuesta.
+
+```text
+CONFIRMADO: el docroot había perdido la librería accesibilidadUdg.
+CONFIRMADO: ListonBlock.php:121 y ListonContenidoBlock.php:121 la adjuntaban.
+CONFIRMADO: js/accesibilityUdg.js existía (2 373 bytes) sin que nada lo cargara.
+CONFIRMADO: los controles de accesibilidad se servían INERTES.
+```
+
+### Estado tras la corrección
+
+```text
+CONFIRMADO: accesibilidadUdg restaurada en udg_liston.libraries.yml.
+CONFIRMADO: la portada ahora carga
+            /modules/custom/udg_liston/js/accesibilityUdg.js
+CONFIRMADO: portada HTTP 200, 67 368 bytes (antes 67 288).
+```
+
+Activos de `udg_liston` cargados ahora:
+
+```text
+/modules/custom/udg_liston/css/udg_banner.css
+/modules/custom/udg_liston/css/udg_liston.css
+/modules/custom/udg_liston/css/udg_slideshow.css
+/modules/custom/udg_liston/js/udg_slideshow.js
+/modules/custom/udg_liston/js/accesibilityUdg.js   <- restaurado
+```
+
+La librería `udg_media` **sigue sin restaurar** a propósito: sus scripts
+contienen API keys de terceros. Es la decisión **D-12**.
+
+```text
+PENDIENTE: verificar funcionalmente los controles en un navegador. Que el JS
+se cargue está CONFIRMADO; que cada botón haga lo correcto es FASE 12.
+```
 
 ```text
 HALLAZGO MENOR: el HTML contiene el atributo "aria-democratizando", que no es

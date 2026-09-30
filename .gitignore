@@ -26,6 +26,31 @@ wp/
 plantilla_drupal/Drudg10.6.9/
 
 # ---------------------------------------------------------------------------
+# Copias entregadas del tema y del módulo institucional.
+# ---------------------------------------------------------------------------
+# Se conservan EN DISCO como línea base de referencia: comparar estas copias
+# contra el docroot fue lo que permitió detectar que el docroot perdió las
+# librerías de accesibilidad (B-04).
+#
+# Pero NO se versionan en este repositorio, que es PÚBLICO, porque contienen:
+#
+#  1. API keys de terceros embebidas (Google, YouTube, Dribbble) en
+#     udg_liston/js/jquery.social.stream.1.6.2.js y su .min.js.
+#     CLAUDE.md §37 prohíbe API keys en Git, sin excepción por procedencia.
+#
+#  2. 14 archivos .otf de Camber (Emtype Foundry), tipografía comercial de
+#     licencia de pago, sin archivo de licencia. Publicar binarios de fuentes
+#     comerciales es una exposición de licenciamiento institucional.
+#
+# Ver docs/decisiones.md, D-13.
+plantilla_drupal/drudg8b3/
+plantilla_drupal/udg_liston/
+
+# Refuerzo por si alguna copia aparece en otra ruta.
+*.otf
+jquery.social.stream*
+
+# ---------------------------------------------------------------------------
 # Volcados de base de datos.
 # ---------------------------------------------------------------------------
 *.sql
