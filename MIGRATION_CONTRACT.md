@@ -4,7 +4,7 @@ Tablero contractual de progreso. Rige sobre cualquier afirmación de avance
 hecha en otro lugar.
 
 - Última actualización: **2026-09-30**
-- Fase actual: **FASE 0 (control del proyecto) — en progreso**
+- Fase actual: **FASE 1 y FASE 4 en progreso**; FASE 0 cerrada con observaciones
 - BLOCKED abiertos: **2** (B-02 media, B-03 base de auditoría)
 - BLOCKED resueltos: **1** (B-01 encoding)
 - Decisiones abiertas: **7** (D-02, D-03, D-04, D-05, D-08, D-10, D-11)
@@ -183,14 +183,52 @@ qué archivos *deberían* existir, no verificar que existan.
 
 - [x] Inventariar módulos y temas instalados en el template
   - Evidencia: `reports/audit/drupal-template-inventory.md`
-- [ ] Revisar `drudg8b3` (regiones, plantillas, librerías)
-- [ ] Revisar `udg_liston`
-- [ ] Revisar Views, menús y bloques
-- [ ] Diseñar content types, fields, taxonomías, media, autores, eventos
+- [x] Revisar `drudg8b3` (26 regiones, 24 plantillas Twig, 2 librerías)
+  - Evidencia: `docs/content-model.md`
+- [x] Revisar `udg_liston` (6 clases PHP, 4 librerías, 5 bloques)
+  - Evidencia: `docs/content-model.md`
+- [x] Revisar Views y bloques (26 vistas, 116 bloques)
+  - Evidencia: `docs/content-model.md`
+- [x] Inventariar campos de los tipos de contenido existentes
+  - Evidencia: `docs/content-model.md` (`noticia` con 9 campos,
+    `evento_de_agenda` con 7)
+- [~] Diseñar content types, fields, taxonomías, media, autores, eventos
+  - Estado: propuesta redactada con el mapeo origen-destino y 10 huecos
+    identificados. **Seis decisiones de diseño no se pueden cerrar sin B-03.**
+  - Evidencia: `docs/content-model.md`
+- [ ] Instalar los módulos ausentes (`migrate*`, `media`, `redirect`, `metatag`)
+  - Requiere aprobación: altera el template institucional
 - [ ] Diseñar SEO, redirects y comentarios
+- [ ] Revisar menús
 
 ```text
-GATE FASE 4: NO SUPERADO. El modelo debe aprobarse antes de migrar en masa.
+GATE FASE 4: NO SUPERADO
+```
+
+Falta la aprobación del responsable, la instalación de los módulos ausentes y
+las seis decisiones de diseño que dependen de la base de auditoría. El modelo
+debe aprobarse antes de migrar en masa (CLAUDE.md §33).
+
+### Huecos del modelo detectados
+
+Contenido editorial de Gaceta sin destino en el template:
+
+```text
+balazo      -> no existe campo
+cita        -> no existe campo
+seccion     -> no existe campo ni vocabulario
+subseccion  -> no existe campo ni vocabulario
+autor editorial -> no existe campo
+trazabilidad WP -> no existe campo
+```
+
+Funcionalidad exigida por el contrato sin módulo instalado:
+
+```text
+Entidades Media (§25)  -> media, media_library      AUSENTES
+Redirects 301 (§24)    -> redirect                  AUSENTE (ni en disco)
+Datos SEO (§23)        -> metatag                   AUSENTE (ni en disco)
+Migrate API (§31)      -> migrate*                  AUSENTES
 ```
 
 ## FASES 5 a 16
