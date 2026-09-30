@@ -89,16 +89,31 @@ Hay **dos problemas distintos** que no deben confundirse:
    migración, pero **debe documentarse** para no atribuirle a nuestro proceso
    pérdidas preexistentes.
 
-### ACCIÓN OBLIGATORIA
+### RESUELTO — ver auditoría dedicada
 
 ```text
-GATE FASE 2 (CLAUDE.md §33): NO SUPERADO
+GATE FASE 2 (encoding): SUPERADO
+Evidencia: reports/audit/encoding-audit.md
 ```
 
-No se ejecuta ninguna transformación de contenido hasta demostrar, con muestras
-reales de `dc8_posts`, cuál es la codificación de bytes real. El procedimiento
-exigido por CLAUDE.md §11 (pasos 1-10) está **pendiente** porque requiere la
-base de auditoría cargada.
+El conflicto quedó resuelto **sin necesidad de la base de auditoría**, mediante
+tres pasadas de lectura en streaming sobre los 3 544 549 259 bytes del dump.
+
+Resumen del resultado:
+
+```text
+CONFIRMADO: la cabecera del dump declara SET NAMES utf8mb4 (phpMyAdmin 4.9.1).
+            El texto del archivo YA está en UTF-8 aunque el CREATE TABLE
+            siga diciendo latin1.
+CONFIRMADO: UTF-8 correcto 1 343 251 ocurrencias contra 32 de doble
+            codificación de letras. Escenario sin ambigüedad.
+CONFIRMADO: existe mojibake, pero sólo de puntuación tipográfica (21 494
+            casos), concentrado en dc8_posts (1.58 % de su texto acentuado).
+CONFIRMADO: taxonomías, comentarios, usuarios y opciones están LIMPIOS.
+PROHIBIDO:  cualquier conversión de charset. Dañaría el 98.4 % correcto.
+```
+
+La reparación del mojibake preexistente es una decisión aparte: **D-11**.
 
 ## Instalación WordPress separada (`wp_*`) — §15
 
@@ -150,11 +165,17 @@ que afecta breadcrumbs y URL canónica.
 ```text
 HALLAZGO NO PREVISTO: Slider Revolution no aparece en el inventario de plugins
 de CLAUDE.md §16, pero sus tablas existen en la base de datos.
+RESUELTO: el plugin SÍ está en disco -> revslider, Slider Revolution 6.0.7.
+          Evidencia: reports/audit/wordpress-inventory.md
 ```
 
-Esto significa que hay un plugin histórico **desinstalado o inactivo cuyas
-tablas persisten**. Debe auditarse si alguno de esos sliders sigue referenciado
-por contenido visible antes de decidir su destino.
+Por tanto no es un residuo de un plugin desinstalado: está instalado, aunque
+**no consta como activo** (la lista de activos vive en `dc8_options`, pendiente
+de B-03). Debe auditarse si alguno de esos sliders sigue referenciado por
+contenido visible antes de decidir su destino.
+
+Las 6 tablas `_bkp` son respaldos internos que el propio plugin genera. No son
+contenido editorial independiente.
 
 ### The Events Calendar (§21)
 
@@ -195,10 +216,29 @@ correo**. Si se audita, todo dato sensible va **REDACTED** en los reportes
 `dc8_agg_sources`
 
 ```text
-DESCONOCIDO: el origen de dc8_agg_displays y dc8_agg_sources.
+RESUELTO: dc8_agg_displays y dc8_agg_sources provienen de
+          WP RSS Aggregator 5.0.6, presente en disco.
+          Evidencia: reports/audit/wordpress-inventory.md
 ```
 
-No corresponden a ningún plugin del inventario de CLAUDE.md §16.
+Este hallazgo tiene consecuencias de fondo para el modelo de contenido: **WP
+RSS Aggregator importa contenido desde fuentes RSS externas**. Es decir, parte
+del corpus de `dc8_posts` podría no ser obra propia de Gaceta sino contenido
+agregado de terceros, con implicaciones de atribución y de derechos.
+
+```text
+HIPÓTESIS: la agregación RSS podría ser el origen del mojibake de puntuación
+detectado en dc8_posts (ver reports/audit/encoding-audit.md).
+```
+
+Las fuentes RSS con encoding mal declarado son una causa clásica de ese patrón
+exacto. Verificarlo exige cruzar los `post_id` dañados con `dc8_agg_sources`,
+lo que requiere B-03.
+
+`dc8_mclean_refs` y `dc8_mclean_scan` (Media Cleaner) ganan relevancia tras
+confirmar que **no existe ninguna copia local de los uploads**: podrían
+contener el único inventario de referencias de archivos que tengamos
+disponible sin acceso a producción.
 
 ## Pendiente para cerrar FASE 2
 

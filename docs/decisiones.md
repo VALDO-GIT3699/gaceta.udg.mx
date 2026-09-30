@@ -121,6 +121,66 @@ Dump a cargar: 3 544 549 259 bytes
 **Información faltante.** Autorización para crear la base y cargar 3.54 GB en
 este equipo, y con qué parámetros de charset.
 
+### ACTUALIZACIÓN 2026-09-30 — la pregunta de charset ya está resuelta
+
+La auditoría de encoding (`reports/audit/encoding-audit.md`) resolvió **B-01
+sin necesidad de esta base de datos**. Por tanto la duda original sobre qué
+charset usar en la carga **ya no existe**:
+
+```text
+RESUELTO: cargar con la conexión en utf8mb4, respetando la cabecera del propio
+dump (/*!40101 SET NAMES utf8mb4 */), y sin pasar --default-character-set.
+PROHIBIDO: forzar latin1 en la importación. Dañaría el 98.4 % del contenido.
+```
+
+### ACTUALIZACIÓN 2026-09-30 — bloqueo nuevo y material: espacio en disco
+
+```text
+CONFIRMADO: C: tiene 14 GB libres de 476 GB. Ocupación: 98 %.
+CONFIRMADO: el dump ocupa 3.54 GB en texto SQL.
+```
+
+Una carga de MyISAM con sus índices ocupa típicamente entre una y dos veces el
+tamaño del volcado. La estimación razonable es **entre 4 y 7 GB**, lo que
+dejaría el disco entre 7 y 10 GB libres sobre un sistema que ya está al 98 %.
+
+Riesgos concretos de proceder así:
+
+- Windows y OneDrive necesitan espacio libre para operar; por debajo de unos
+  pocos GB el equipo se vuelve inestable.
+- MyISAM **no es transaccional**. Si la carga agota el disco a mitad, la base
+  queda incompleta y hay que empezar de cero, tras liberar espacio.
+- La carga es de varias horas. Un fallo por disco al final del proceso
+  desperdicia toda la ventana.
+
+```text
+RECOMENDACIÓN: no iniciar la carga hasta liberar espacio o disponer de otro
+volumen. Se necesitan al menos 20 GB libres para trabajar con holgura.
+```
+
+Opciones para liberar o reubicar, en orden de preferencia técnica:
+
+1. **Usar otro volumen o un disco externo** para el directorio de datos de
+   MariaDB. Es la opción más limpia y no toca nada del equipo.
+2. **Liberar espacio en `C:`**. Hay candidatos evidentes fuera del proyecto:
+   tres instalaciones de XAMPP (`C:\xampp`, `C:\xampp8.1.17`,
+   `C:\xampp8.2.12`) de las que el proyecto sólo usa dos. **No se toca
+   ninguna sin autorización**: `C:\xampp8.2.12` contiene la base de datos de
+   Drupal y también `webcsocial`, que es de otro proyecto.
+3. **Cargar sólo un subconjunto de tablas.** Técnicamente posible (cargar
+   `dc8_posts`, `dc8_postmeta`, `dc8_terms`, `dc8_term_taxonomy`,
+   `dc8_term_relationships`, `dc8_users`, `dc8_comments` y omitir caché,
+   sliders y logs). Reduce mucho el espacio, pero **deja partes del corpus sin
+   auditar**, lo que contradice el mandato de preservación. Sólo como último
+   recurso y documentando exactamente qué quedó fuera.
+
+**Pregunta actualizada.** ¿Hay otro volumen disponible para el directorio de
+datos, o se autoriza liberar espacio en `C:`? Si ninguna es posible, ¿se
+autoriza la carga parcial de la opción 3, sabiendo qué tablas quedarían sin
+auditar?
+
+### Planteamiento original
+
 **Opción A.** Crear `gaceta_auditoria` en el MariaDB de `C:\xampp8.2.12` y
 cargar el dump tal cual, **sin forzar charset de conexión**, preservando los
 bytes tal como están declarados por tabla.
@@ -480,3 +540,70 @@ expresamente.
 **Pregunta.** ¿Se rotan las credenciales del entorno (opción A) o se autoriza
 reescribir el historial del repositorio del template (opción B)? ¿Quién es el
 responsable del template institucional que debería aprobarlo?
+
+---
+
+## D-11 — Reparación del mojibake preexistente en `dc8_posts`
+
+```text
+DECISIÓN REQUERIDA
+Bloquea: nada de la carga. Afecta a FASE 9 (migración de contenido).
+```
+
+**Contexto.** La auditoría de encoding demostró que el contenido del dump es
+UTF-8 correcto, pero detectó **daño preexistente** en la puntuación
+tipográfica.
+
+**Datos confirmados.**
+
+```text
+CONFIRMADO: 21 494 ocurrencias de doble codificación de puntuación.
+CONFIRMADO: 21 324 de ellas (99.2 %) están en dc8_posts.
+CONFIRMADO: representan el 1.58 % del texto acentuado de dc8_posts.
+CONFIRMADO: 3 879 son puntos suspensivos; el resto, comillas tipográficas,
+            apóstrofos y guiones largos.
+CONFIRMADO: sólo 32 casos afectan a LETRAS acentuadas en todo el dump.
+CONFIRMADO: dc8_terms, dc8_comments, dc8_users y dc8_options: 0 casos.
+CONFIRMADO: el daño NO lo causa la base de datos ni el dump. Es de origen
+            editorial (texto pegado desde Word, PDF o fuentes RSS).
+```
+
+**Problema.** ¿Se migra el contenido tal cual, conservando el daño, o se
+repara durante la migración?
+
+**Opción A — migrar tal cual.** Fidelidad absoluta al origen. Drupal mostrará
+exactamente lo que muestra WordPress hoy, defectos incluidos.
+
+**Opción B — reparar durante la migración.** Aplicar la transformación inversa
+sobre las cadenas afectadas, con registro de cada cambio.
+
+**Riesgo.** La opción A traslada a un sitio nuevo un defecto conocido y
+medible, en 21 324 posiciones de contenido publicado. La opción B **modifica
+contenido editorial**, lo que excede el mandato de preservación si no está
+autorizado; además, aunque el patrón es determinista, cualquier regla de
+reparación puede producir falsos positivos si algún texto contiene esas
+secuencias de forma legítima.
+
+Factores a favor de la viabilidad de B:
+
+```text
+El patrón es determinista y acotado: la doble codificación de e2 80 xx.
+La reparación es verificable: se puede contar antes y después.
+Es reversible: el origen permanece intacto y la migración es repetible.
+Se puede aplicar como paso explícito y auditable, con su propio reporte de
+cuántas cadenas cambiaron y en qué registros.
+```
+
+**Recomendación técnica neutral.** Opción B, **pero como paso separado y
+explícito**, nunca como efecto colateral de la migración. Es decir: migrar
+primero con fidelidad, y aplicar la reparación como una transformación
+documentada, con reporte de cada registro alterado y posibilidad de repetir la
+migración sin ella. Así se cumple a la vez la preservación (el origen y la
+migración fiel existen) y la calidad (el sitio nuevo no hereda el defecto).
+
+CLAUDE.md §11 exige demostrar la codificación original antes de corregir. Esa
+demostración ya existe: `reports/audit/encoding-audit.md`.
+
+**Pregunta.** ¿Se autoriza reparar el mojibake como paso explícito y auditable
+posterior a la migración fiel? ¿O se prefiere migrar tal cual y tratar la
+limpieza como tarea editorial fuera de este proyecto?

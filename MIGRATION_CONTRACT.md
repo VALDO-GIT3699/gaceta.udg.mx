@@ -5,8 +5,9 @@ hecha en otro lugar.
 
 - Última actualización: **2026-09-30**
 - Fase actual: **FASE 0 (control del proyecto) — en progreso**
-- BLOCKED abiertos: **3** (B-01 encoding, B-02 media, B-03 base de auditoría)
-- Decisiones abiertas: **5** (D-02, D-03, D-04, D-05, D-08)
+- BLOCKED abiertos: **2** (B-02 media, B-03 base de auditoría)
+- BLOCKED resueltos: **1** (B-01 encoding)
+- Decisiones abiertas: **7** (D-02, D-03, D-04, D-05, D-08, D-10, D-11)
 
 ## Leyenda
 
@@ -113,10 +114,14 @@ público: la integración del docroot y la purga de credenciales del historial.
 - [x] Inventariar el dump (tamaño, tablas, motores, charsets)
   - Evidencia: `reports/audit/database-inventory.md`,
     `reports/audit/wp-tables-engine.txt`
-- [~] Inventariar filesystem WordPress
-- [ ] Inventariar plugins
-- [ ] Inventariar tema (Newspaper / tagDiv)
-- [ ] Inventariar uploads
+- [x] Inventariar filesystem WordPress
+  - Evidencia: `reports/audit/wordpress-inventory.md`
+- [x] Inventariar plugins en disco (38 directorios, versiones clave)
+  - Evidencia: `reports/audit/wordpress-inventory.md`
+- [x] Inventariar tema (Newspaper 12.6 confirmado)
+  - Evidencia: `reports/audit/wordpress-inventory.md`
+- [!] Inventariar uploads - **B-02**: el directorio NO existe en la copia local
+- [ ] Determinar plugins **activos** (`dc8_options.active_plugins`) *(requiere B-03)*
 - [ ] Inventariar tipos de contenido *(requiere B-03)*
 - [ ] Inventariar estados *(requiere B-03)*
 - [ ] Inventariar autores *(requiere B-03)*
@@ -136,25 +141,43 @@ GATE FASE 1: NO SUPERADO
 
 ## FASE 2 — Auditoría de base de datos
 
-- [!] Cargar dump en base de auditoría — **B-03**
+- [!] Cargar dump en base de auditoría - **B-03**
 - [x] Confirmar tablas, motores y charsets declarados
   - Evidencia: `reports/audit/database-inventory.md`
-- [!] Confirmar encoding real de `dc8_posts` — **B-01**
+- [x] Confirmar encoding real de `dc8_posts` - **B-01 RESUELTO**
+  - Evidencia: `reports/audit/encoding-audit.md`
+  - Reproducible con: `tools/audit-encoding.py`
 - [ ] Todo lo demás *(requiere B-03)*
 
 ```text
-GATE CRÍTICO FASE 2: NO SUPERADO
-Motivo: existe incertidumbre sobre el encoding. CLAUDE.md §33 prohíbe avanzar.
+GATE CRÍTICO FASE 2 (encoding): SUPERADO
+```
+
+La incertidumbre sobre el encoding que CLAUDE.md §33 señalaba como bloqueante
+**ya no existe**. Está demostrado sobre los 3 544 549 259 bytes del dump que el
+contenido es UTF-8 correcto y que la estrategia es **no convertir**.
+
+```text
+GATE FASE 2 (resto): NO SUPERADO
+Motivo: conteos, post types, Elementor, Yoast y formularios siguen requiriendo
+la base de auditoría (B-03).
 ```
 
 ## FASE 3 — Auditoría de media
 
-- [!] Determinar si el `uploads` local está completo — **B-02**
-- [ ] Resto de tareas
+- [x] Determinar si el `uploads` local está completo
+  - Evidencia: `reports/audit/wordpress-inventory.md`
+  - Resultado: **no existe**. No hay copia parcial: no hay copia alguna.
+- [!] Todo lo demás - **B-02**, por dependencia externa
 
 ```text
-GATE FASE 3: NO SUPERADO
+GATE FASE 3: NO SUPERADO - BLOQUEADO POR DEPENDENCIA EXTERNA
 ```
+
+Sin archivos no se puede calcular hashes (§26), relacionar attachments con
+archivos físicos (§25), detectar derivados ni identificar huérfanos. Lo único
+auditable son las **referencias** en la base de datos, que permiten inventariar
+qué archivos *deberían* existir, no verificar que existan.
 
 ## FASE 4 — Diseño del modelo Drupal
 
@@ -189,11 +212,37 @@ Sin iniciar. No se abren mientras existan BLOCKED en fases previas.
 
 ## BLOCKED abiertos
 
-### B-01 — Encoding real de `dc8_posts`
+### B-01 - Encoding real de `dc8_posts` - **RESUELTO**
 
 ```text
-FASE:     2
-ESTADO:   BLOCKED
+FASE:      2
+ESTADO:    RESUELTO (2026-09-30)
+EVIDENCIA: reports/audit/encoding-audit.md
+```
+
+Resuelto **sin necesidad de la base de auditoría**. La cabecera del dump
+declara `SET NAMES utf8mb4`, por lo que phpMyAdmin ya convirtió el contenido a
+UTF-8 al volcarlo: la declaración `latin1` del `CREATE TABLE` describe el
+almacenamiento en origen, no el archivo.
+
+```text
+UTF-8 correcto:                1 343 251 ocurrencias
+Doble codificación de letras:         32 ocurrencias
+```
+
+La proporción no deja ambigüedad. **Prohibida cualquier conversión de
+charset**: dañaría el 98.4 % del contenido que hoy está correcto.
+
+El síntoma de mojibake que documenta CLAUDE.md §11 existe (21 494 casos) pero
+es **daño preexistente de puntuación tipográfica**, de origen editorial,
+concentrado en `dc8_posts` (1.58 % de su texto acentuado). Taxonomías,
+comentarios, usuarios y opciones están limpios. Su reparación es la decisión
+**D-11**.
+
+### Planteamiento original del bloqueo
+
+```text
+ESTADO HISTÓRICO: BLOCKED
 ```
 
 `dc8_posts` declara `ENGINE=MyISAM DEFAULT CHARSET=latin1`, mientras WordPress
@@ -207,17 +256,28 @@ acentuado comparadas contra lo que muestra el WordPress de producción.
 Evidencia: `reports/audit/database-inventory.md`
 Depende de: B-03
 
-### B-02 — Completitud de `/wp-content/uploads`
+### B-02 - Ausencia total de `/wp-content/uploads`
 
 ```text
-FASE:     3
-ESTADO:   BLOCKED
+FASE:      3, 6
+ESTADO:    BLOCKED - AGRAVADO
+EVIDENCIA: reports/audit/wordpress-inventory.md
 ```
 
-Producción reporta ~84.23 GB de uploads. La copia local es parcial. **No se
-declarará la migración de media como completa** mientras no exista acceso al
-árbol completo, o una autorización explícita para migrar sólo un subconjunto
-documentado (CLAUDE.md §25, §33).
+CLAUDE.md §25 describía la copia local como parcial. **La realidad es peor:**
+
+```text
+CONFIRMADO: wp-content/uploads NO EXISTE en la copia local.
+CONFIRMADO: no hay ningún directorio "uploads" en todo el proyecto.
+CONFIRMADO: 0 archivos de imagen o PDF en los tres primeros niveles.
+CONFIRMADO: ai1wm-backups son 38 KB y NO contiene ningún respaldo.
+```
+
+Producción reporta ~84.23 GB. Disponible localmente: **0 bytes**.
+
+No es un problema de completitud sino de ausencia. Bloquea por completo las
+FASES 3 y 6. **Requiere acceso al árbol de uploads de producción**; no hay
+forma de resolverlo con el material entregado.
 
 ### B-03 — Base de datos de auditoría inexistente
 
@@ -246,6 +306,7 @@ Formato completo en `docs/decisiones.md`.
 | D-05 | Destino del contenido de demostración de la plantilla | FASE 4 |
 | D-08 | Entrada fantasma `udg_institucional` en `core.extension` | nada |
 | D-10 | Purga de credenciales del historial del repositorio Drupal | publicación del docroot |
+| D-11 | Reparación del mojibake preexistente en `dc8_posts` | FASE 9 (no bloquea la carga) |
 
 ## Decisiones resueltas
 
@@ -259,8 +320,11 @@ Formato completo en `docs/decisiones.md`.
 
 ## Riesgos críticos vigentes
 
-1. **Encoding (B-01).** Riesgo de corrupción irreversible del corpus editorial.
-2. **Media incompleta (B-02).** Riesgo de declarar terminado algo incompleto.
+1. **Encoding (B-01): resuelto, y el riesgo se invierte.** El peligro ya no es
+   importar sin convertir, sino **convertir**. Cualquier conversión de charset
+   dañaría el 98.4 % del contenido que está correcto.
+2. **Media ausente (B-02).** Agravado: no existe ninguna copia de los archivos.
+   Las FASES 3 y 6 están bloqueadas por dependencia externa.
 3. **Elementor (D-03).** `post_content` puede no contener el contenido visible.
 4. **Repositorio remoto público.** Decisión tomada: el remoto **se mantiene
    público**. Por lo tanto queda como restricción permanente del proyecto:
@@ -273,3 +337,13 @@ Formato completo en `docs/decisiones.md`.
 6. **Rendimiento del entorno.** El proyecto vive en OneDrive; la compilación de
    Twig excede los 120 s de `max_execution_time` por defecto. No afecta la
    integridad de los datos, pero sí los tiempos de validación.
+7. **Espacio en disco insuficiente.** `C:` tiene **14 GB libres de 476 GB
+   (98 % ocupado)**. Cargar el dump de 3.54 GB en la base de auditoría dejaría
+   el equipo al borde de su capacidad. Bloquea D-02 por una razón nueva y
+   material.
+8. **Contenido agregado de terceros.** WP RSS Aggregator 5.0.6 está instalado:
+   parte del corpus de `dc8_posts` podría no ser obra propia de Gaceta, con
+   implicaciones de atribución y de derechos.
+9. **SSO institucional.** `wp-content/mu-plugins/sso.php` implica autenticación
+   federada. No hay equivalente instalado en el template y el roadmap no lo
+   contempla.
