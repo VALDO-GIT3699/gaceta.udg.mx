@@ -1,0 +1,275 @@
+# MIGRATION_CONTRACT.md — Gaceta UDG: WordPress → Drupal 10
+
+Tablero contractual de progreso. Rige sobre cualquier afirmación de avance
+hecha en otro lugar.
+
+- Última actualización: **2026-09-30**
+- Fase actual: **FASE 0 (control del proyecto) — en progreso**
+- BLOCKED abiertos: **3** (B-01 encoding, B-02 media, B-03 base de auditoría)
+- Decisiones abiertas: **5** (D-02, D-03, D-04, D-05, D-08)
+
+## Leyenda
+
+```markdown
+- [ ] No iniciado
+- [~] En progreso
+- [x] Completado y validado (exige evidencia verificable)
+- [!] Bloqueado
+```
+
+Una casilla `[x]` **sólo es válida si cita un archivo de evidencia que exista y
+tenga contenido real**. El código existente no es evidencia (CLAUDE.md §6).
+
+## Entorno confirmado
+
+Verificado por ejecución el 2026-09-30:
+
+```text
+CONFIRMADO: Workspace          C:\Users\acer\OneDrive\Documentos\gaceta
+CONFIRMADO: Drupal core        10.6.9  (core/lib/Drupal.php: const VERSION)
+CONFIRMADO: Drupal root        plantilla_drupal/Drudg10.6.9
+CONFIRMADO: Bootstrap Drupal   Successful (drush status)
+CONFIRMADO: BD Drupal          <BD_DRUPAL> — Connected, 191 tablas
+CONFIRMADO: Motor BD           MariaDB 10.4.32 (C:\xampp8.2.12\mysql)
+CONFIRMADO: PHP                8.2.12
+CONFIRMADO: Composer           2.7.8
+CONFIRMADO: Drush              12.5.3.0
+CONFIRMADO: Tema por defecto   drudg8b3  (corregido, ver D-01)
+CONFIRMADO: Tema admin         claro
+CONFIRMADO: Perfil             standard
+CONFIRMADO: Dump WordPress     wp/DB/gaceta (2).sql — 3 544 549 259 bytes
+CONFIRMADO: Tablas en el dump  68 (56 dc8_, 12 wp_)
+CONFIRMADO: Repositorio remoto git@github.com:VALDO-GIT3699/gaceta.udg.mx.git
+CONFIRMADO: Estado del remoto  rama main, un solo commit, sólo README.md
+CONFIRMADO: Visibilidad remoto PÚBLICO
+CONFIRMADO: SSH a GitHub       autenticado como VALDO-GIT3699
+```
+
+### Contenido actual del template Drupal
+
+```text
+CONFIRMADO: 56 nodos en 13 tipos de contenido
+  page 10 · evento_de_agenda 10 · banner 6 · directorio 6 · noticia 4
+  enlaces_de_interes 4 · galeria_de_videos 3 · video 3 · _aviso_emergente 3
+  slideshow 2 · galeria_de_imagenes 2 · titulo 2 · liston_de_contenido 1
+CONFIRMADO: 60 términos en 8 vocabularios
+CONFIRMADO: 4 usuarios
+```
+
+Este contenido es **contenido de demostración de la plantilla institucional**,
+no contenido de Gaceta. Su destino (conservar, ocultar o eliminar) es la
+decisión **D-05**, aún abierta.
+
+## FASE 0 — Control del proyecto
+
+- [x] Confirmar raíz del proyecto
+  - Evidencia: `reports/audit/environment-inventory.md`
+- [x] Confirmar versión y arranque de Drupal 10
+  - Evidencia: `reports/audit/environment-inventory.md` (drush status)
+- [x] Confirmar base de datos Drupal operativa
+  - Evidencia: `reports/audit/environment-inventory.md`
+- [x] Crear `MIGRATION_CONTRACT.md`
+  - Evidencia: este archivo
+- [x] Crear estructura de reportes y documentación
+  - Evidencia: `reports/audit/`, `reports/migration/`, `reports/validation/`,
+    `docs/`, `tools/`
+- [x] Crear agente auditor
+  - Evidencia: `.claude/agents/auditor-migracion-gaceta.md`
+- [x] Confirmar reglas de commits
+  - Evidencia: `docs/git-workflow.md`
+- [x] Corregir el tema por defecto roto del template
+  - Evidencia: `docs/decisiones.md` (D-01)
+- [x] Confirmar Git y remote del proyecto
+  - Evidencia: `docs/decisiones.md` (D-06). El remoto fue inspeccionado sin
+    sobrescribirlo; el repositorio del proyecto se inicializó en la raíz
+    tomando como padre el commit existente del remoto.
+- [x] Confirmar por escrito que producción no será modificada
+  - Evidencia: `docs/decisiones.md` (D-07). El responsable confirmó que el
+    acceso al WordPress de producción es únicamente de lectura y que nadie
+    ejecutará cambios durante la migración.
+- [x] Registrar la actualización de core pendiente del template
+  - Evidencia: commit `core: registra la actualización de Drupal de 10.5.3 a
+    10.6.9` en el repositorio de `plantilla_drupal/Drudg10.6.9`.
+- [x] Retirar credenciales del índice de Git del sitio Drupal
+  - Evidencia: commit `seguridad: deja de versionar settings.php y
+    services.yml del sitio Drupal`.
+- [ ] Integrar el docroot Drupal al repositorio del proyecto
+  - Pendiente: el sitio vive en un repositorio Git independiente y quedó
+    excluido del repositorio del proyecto. Ver D-06, punto pendiente.
+- [ ] Purgar credenciales del historial del repositorio del sitio Drupal
+  - Pendiente: requiere reescritura de historial. Ver D-10.
+
+```text
+GATE FASE 0: SUPERADO CON OBSERVACIONES
+```
+
+Las tareas de control están cumplidas y el entorno es operativo y verificable.
+Quedan dos pendientes que **no bloquean** el avance a las fases de auditoría,
+pero **sí bloquean** cualquier publicación del árbol Drupal en el remoto
+público: la integración del docroot y la purga de credenciales del historial.
+
+## FASE 1 — Inventario del WordPress
+
+- [x] Inventariar el dump (tamaño, tablas, motores, charsets)
+  - Evidencia: `reports/audit/database-inventory.md`,
+    `reports/audit/wp-tables-engine.txt`
+- [~] Inventariar filesystem WordPress
+- [ ] Inventariar plugins
+- [ ] Inventariar tema (Newspaper / tagDiv)
+- [ ] Inventariar uploads
+- [ ] Inventariar tipos de contenido *(requiere B-03)*
+- [ ] Inventariar estados *(requiere B-03)*
+- [ ] Inventariar autores *(requiere B-03)*
+- [ ] Inventariar taxonomías *(requiere B-03)*
+- [ ] Inventariar comentarios *(requiere B-03)*
+- [ ] Inventariar postmeta *(requiere B-03)*
+- [ ] Inventariar Elementor *(requiere B-03)*
+- [ ] Inventariar SEO *(requiere B-03)*
+- [ ] Inventariar formularios *(requiere B-03)*
+- [ ] Inventariar eventos *(requiere B-03)*
+- [ ] Inventariar sliders *(requiere B-03)*
+- [ ] Inventariar configuraciones relevantes *(requiere B-03)*
+
+```text
+GATE FASE 1: NO SUPERADO
+```
+
+## FASE 2 — Auditoría de base de datos
+
+- [!] Cargar dump en base de auditoría — **B-03**
+- [x] Confirmar tablas, motores y charsets declarados
+  - Evidencia: `reports/audit/database-inventory.md`
+- [!] Confirmar encoding real de `dc8_posts` — **B-01**
+- [ ] Todo lo demás *(requiere B-03)*
+
+```text
+GATE CRÍTICO FASE 2: NO SUPERADO
+Motivo: existe incertidumbre sobre el encoding. CLAUDE.md §33 prohíbe avanzar.
+```
+
+## FASE 3 — Auditoría de media
+
+- [!] Determinar si el `uploads` local está completo — **B-02**
+- [ ] Resto de tareas
+
+```text
+GATE FASE 3: NO SUPERADO
+```
+
+## FASE 4 — Diseño del modelo Drupal
+
+- [x] Inventariar módulos y temas instalados en el template
+  - Evidencia: `reports/audit/drupal-template-inventory.md`
+- [ ] Revisar `drudg8b3` (regiones, plantillas, librerías)
+- [ ] Revisar `udg_liston`
+- [ ] Revisar Views, menús y bloques
+- [ ] Diseñar content types, fields, taxonomías, media, autores, eventos
+- [ ] Diseñar SEO, redirects y comentarios
+
+```text
+GATE FASE 4: NO SUPERADO. El modelo debe aprobarse antes de migrar en masa.
+```
+
+## FASES 5 a 16
+
+Sin iniciar. No se abren mientras existan BLOCKED en fases previas.
+
+- [ ] FASE 5 — Piloto
+- [ ] FASE 6 — Migración de media
+- [ ] FASE 7 — Migración de taxonomías
+- [ ] FASE 8 — Migración de autores
+- [ ] FASE 9 — Migración de contenido
+- [ ] FASE 10 — SEO y URLs
+- [ ] FASE 11 — Reconstrucción visual
+- [ ] FASE 12 — Accesibilidad
+- [ ] FASE 13 — Validación automática
+- [ ] FASE 14 — Validación visual
+- [ ] FASE 15 — Pruebas
+- [ ] FASE 16 — Sincronización final
+
+## BLOCKED abiertos
+
+### B-01 — Encoding real de `dc8_posts`
+
+```text
+FASE:     2
+ESTADO:   BLOCKED
+```
+
+`dc8_posts` declara `ENGINE=MyISAM DEFAULT CHARSET=latin1`, mientras WordPress
+declara `utf8mb4`. Además hay **24 tablas `dc8_` en `utf8` (utf8mb3)**, un
+hallazgo que amplía lo previsto en CLAUDE.md §11.
+
+Aplicar la conversión de charset equivocada destruye los bytes originales de
+forma irreversible. Se desbloquea únicamente con muestras reales de contenido
+acentuado comparadas contra lo que muestra el WordPress de producción.
+
+Evidencia: `reports/audit/database-inventory.md`
+Depende de: B-03
+
+### B-02 — Completitud de `/wp-content/uploads`
+
+```text
+FASE:     3
+ESTADO:   BLOCKED
+```
+
+Producción reporta ~84.23 GB de uploads. La copia local es parcial. **No se
+declarará la migración de media como completa** mientras no exista acceso al
+árbol completo, o una autorización explícita para migrar sólo un subconjunto
+documentado (CLAUDE.md §25, §33).
+
+### B-03 — Base de datos de auditoría inexistente
+
+```text
+FASE:     1, 2
+ESTADO:   BLOCKED
+```
+
+`gaceta_auditoria` no existe en este equipo. La ruta de MariaDB que cita
+CLAUDE.md §12 (`C:\Users\Usuario2\xampp8.1.25\...`) pertenece a otra máquina;
+sus resultados no son verificables aquí.
+
+Sin esta base no hay cifras confiables: CLAUDE.md §14 declara **no confiables**
+los conteos obtenidos por parser de texto. Cargar 3.54 GB en MariaDB es una
+operación de larga duración que requiere decisión previa (**D-02**).
+
+## Decisiones requeridas (abiertas)
+
+Formato completo en `docs/decisiones.md`.
+
+| ID | Asunto | Bloquea |
+|---|---|---|
+| D-02 | Nombre, ubicación y parámetros de la base de auditoría | B-03, FASE 1, FASE 2 |
+| D-03 | Estrategia de extracción de Elementor | FASE 4, FASE 9 |
+| D-04 | Tratamiento de envíos de formularios (datos personales) | FASE 9 |
+| D-05 | Destino del contenido de demostración de la plantilla | FASE 4 |
+| D-08 | Entrada fantasma `udg_institucional` en `core.extension` | nada |
+| D-10 | Purga de credenciales del historial del repositorio Drupal | publicación del docroot |
+
+## Decisiones resueltas
+
+| ID | Asunto | Resultado |
+|---|---|---|
+| D-01 | Tema por defecto apuntaba a `udg_institucional`, inexistente en disco | Corregido a `drudg8b3` |
+| D-06 | Estructura del repositorio | Repositorio en la raíz del proyecto; el docroot Drupal queda excluido por ahora |
+| D-06b | Visibilidad del remoto | Se mantiene **PÚBLICO** por decisión del responsable |
+| D-07 | No modificar producción | Confirmado: acceso de sólo lectura |
+| D-09 | Extensión GD | Habilitada por proceso, sin tocar el `php.ini` global |
+
+## Riesgos críticos vigentes
+
+1. **Encoding (B-01).** Riesgo de corrupción irreversible del corpus editorial.
+2. **Media incompleta (B-02).** Riesgo de declarar terminado algo incompleto.
+3. **Elementor (D-03).** `post_content` puede no contener el contenido visible.
+4. **Repositorio remoto público.** Decisión tomada: el remoto **se mantiene
+   público**. Por lo tanto queda como restricción permanente del proyecto:
+   ningún reporte versionado puede contener muestras de contenido editorial,
+   comentarios de lectores, envíos de formularios ni credenciales. En este
+   entorno el nombre de la base, el usuario y la contraseña son la misma
+   cadena, por lo que ese valor se publica como `<BD_DRUPAL>`.
+5. **Cifras previas no confiables.** Los conteos de CLAUDE.md §14 provienen de
+   un parser de texto y están explícitamente invalidados por el contrato.
+6. **Rendimiento del entorno.** El proyecto vive en OneDrive; la compilación de
+   Twig excede los 120 s de `max_execution_time` por defecto. No afecta la
+   integridad de los datos, pero sí los tiempos de validación.

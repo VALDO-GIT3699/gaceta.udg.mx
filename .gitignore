@@ -1,0 +1,64 @@
+# Reglas de exclusión del repositorio del proyecto Gaceta UDG
+#
+# Obligatorio por CLAUDE.md §37: en Git no entran contraseñas, tokens, claves,
+# hashes ni volcados de base de datos.
+
+# ---------------------------------------------------------------------------
+# Copia local de WordPress. NUNCA se versiona.
+# ---------------------------------------------------------------------------
+# Contiene el dump de 3.54 GB con todo el contenido editorial, los usuarios y
+# los comentarios del sitio, además del código de WordPress y de una copia
+# antigua de phpMyAdmin (wp/qdb, que CLAUDE.md §10 excluye de la migración).
+wp/
+
+# ---------------------------------------------------------------------------
+# Sitio Drupal: repositorio Git independiente.
+# ---------------------------------------------------------------------------
+# plantilla_drupal/Drudg10.6.9 tiene su propio .git con el historial del
+# template institucional de la UDG (ramas master, dev, dev2, dev3). Se excluye
+# aquí para no crear un enlace de submódulo roto.
+#
+# PENDIENTE: integrarlo al repositorio del proyecto preservando su historial
+# (git subtree). Ver docs/decisiones.md, D-06.
+#
+# NO PUBLICAR ese árbol en un repositorio público hasta purgar del historial
+# las credenciales de sites/default/settings.php.
+plantilla_drupal/Drudg10.6.9/
+
+# ---------------------------------------------------------------------------
+# Volcados de base de datos.
+# ---------------------------------------------------------------------------
+*.sql
+*.sql.gz
+*.mysql
+
+# ---------------------------------------------------------------------------
+# Secretos.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+*.pem
+*.key
+settings.local.php
+credentials*.json
+service-account*.json
+
+# ---------------------------------------------------------------------------
+# Metadatos del sistema operativo.
+# ---------------------------------------------------------------------------
+# Los archivos ._* y __MACOSX proceden de haber comprimido el material en
+# macOS. No son parte del proyecto.
+.DS_Store
+._*
+__MACOSX/
+Thumbs.db
+desktop.ini
+
+# ---------------------------------------------------------------------------
+# Editores y temporales.
+# ---------------------------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*~
+*.tmp
