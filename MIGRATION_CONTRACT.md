@@ -4,12 +4,14 @@ Tablero contractual de progreso. Rige sobre cualquier afirmación de avance
 hecha en otro lugar.
 
 - Última actualización: **2026-09-30**
-- Fase actual: **FASE 1 y FASE 4 en progreso**; FASE 0 cerrada con observaciones
+- Fase actual: **FASES 7 y 8 en progreso** (primera migración de datos reales
+  ejecutada con 0 fallos); FASES 0, 1 y 2 cerradas; FASE 4 implementada
 - BLOCKED abiertos: **2** (B-03 base de auditoría, B-04 accesibilidad)
 - BLOCKED resueltos: **1** (B-01 encoding, para la estrategia de importación)
 - Dependencias externas aceptadas: **1** (B-02 media, por decisión D-15)
 - Decisiones abiertas: **9** (D-02, D-03, D-04, D-05, D-08, D-10, D-11, D-12, D-13)
-- Decisiones resueltas por el responsable: **D-14** créditos, **D-15** media
+- Decisiones resueltas por el responsable: **D-14** créditos, **D-15** media,
+  **D-20** módulos, **D-08** despreciar `udg_institucional`
 - Último dictamen del auditor: **NO AUTORIZADO** (2026-09-30). Hallazgos
   atendidos en esta revisión; requiere nuevo dictamen.
 
@@ -334,8 +336,20 @@ Sin iniciar. No se abren mientras existan BLOCKED en fases previas.
 
 - [ ] FASE 5 — Piloto
 - [ ] FASE 6 — Migración de media
-- [ ] FASE 7 — Migración de taxonomías
-- [ ] FASE 8 — Migración de autores
+- [~] FASE 7 — Migración de taxonomías
+  - **Ejecutada para secciones, subsecciones y etiquetas.** 8 825 términos
+    migrados con 0 fallos y conciliación exacta origen-destino.
+  - Evidencia: `reports/migration/migration-batches.md` (lote 1)
+  - Pendiente: la taxonomía `category` de WordPress (129 términos
+    jerárquicos) y la reconciliación de las dos arquitecturas editoriales.
+- [~] FASE 8 — Migración de autores
+  - **Ejecutada.** 142 créditos editoriales migrados como términos, con 0
+    fallos, según la decisión D-14: no se crean cuentas de usuario.
+  - Trazabilidad verificada: cada término conserva `field_wp_user_id` y
+    `field_wp_user_login`.
+  - Evidencia: `reports/migration/migration-batches.md` (lote 1)
+  - Pendiente: decidir qué hacer con la cuenta genérica que acumula el 64.5 %
+    del corpus.
 - [ ] FASE 9 — Migración de contenido
 - [~] FASE 10 — SEO y URLs
   - Estrategia redactada: `docs/url-strategy.md`
@@ -575,7 +589,6 @@ Formato completo en `docs/decisiones.md`.
 | D-03 | Estrategia de Elementor — **ACOTADA**: 2 359 entradas, no 47 900 | FASE 4 |
 | D-04 | Tratamiento de envíos de formularios (datos personales) | FASE 9 |
 | D-05 | Destino del contenido de demostración de la plantilla | FASE 4 |
-| D-08 | **El tema `udg_institucional` falta en el material entregado**: la BD tiene 39 bloques suyos y `drudg8b3` sólo 17 | FASE 11 |
 | D-10 | Purga de credenciales del historial del repositorio Drupal | publicación del docroot |
 | D-11 | Reparación del mojibake preexistente en `dc8_posts` | FASE 9 (no bloquea la carga) |
 | D-16 | Las 185 colisiones de slug histórico y los slugs con entidades HTML roto | FASE 10 |
@@ -649,12 +662,11 @@ Formato completo en `docs/decisiones.md`.
    indexadas. Ver D-16.
 15. **46 713 imágenes sin texto alternativo** (el 98.67 % de 48 358). La FASE
    12 no puede preservar una accesibilidad que no existe en el origen.
-16. **Falta el tema `udg_institucional` del material entregado.** La base de
-   datos tiene 39 bloques configurados para él; `drudg8b3`, el que sí existe,
-   tiene 17. Las 18 regiones que usan esos bloques existen todas en
-   `drudg8b3`, lo que apunta a que es un derivado cuyos archivos no se
-   entregaron. El sitio renderiza, pero con la mitad del diseño institucional.
-   Afecta a la FASE 11. Ver D-08.
+16. ~~Falta el tema `udg_institucional`.~~ **RIESGO RETIRADO: era un falso
+   hallazgo mío.** Conté los bloques por el prefijo del ID en lugar de por su
+   campo `theme`. Leído bien, `drudg8b3` tiene **39 bloques**, los mismos que
+   `udg_institucional`, incluidos el listón, la agenda, las galerías, el aviso
+   emergente, el banner y redes sociales. No falta nada. Ver D-08.
 17. **Deriva entre la configuración exportada del template y su base de
    datos.** El export recogió 124 archivos de configuración que nunca se
    habían exportado y 6 que ya no existen en la base. No lo causó este

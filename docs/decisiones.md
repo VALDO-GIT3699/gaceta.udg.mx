@@ -546,12 +546,111 @@ durante el proyecto, y que el acceso disponible es únicamente de lectura?
 
 ---
 
-## D-08 — El tema `udg_institucional` que falta en el material entregado
+## D-08 — `udg_institucional`: configuración duplicada que se desprecia
 
 ```text
-DECISIÓN REQUERIDA
-Bloquea: FASE 11 (reconstrucción visual). Ya NO es cosmético.
-Reclasificado el 2026-10-01 con evidencia nueva.
+Fecha:   2026-10-01
+Estado:  RESUELTA. Instrucción del responsable: trabajar con drudg8b3.
+```
+
+### Resolución
+
+```text
+"Intenta despreciar udg_institucional, el mero mero bueno es drudg8b3.
+ udg_institucional solo es para accesibilidad que no está aprobada."
+```
+
+Se trabaja directamente con `drudg8b3`. La configuración de
+`udg_institucional` queda como configuración huérfana y no se toca.
+
+### CORRECCIÓN DE UN FALSO HALLAZGO
+
+Este documento afirmó antes que **faltaba un tema** en el material entregado,
+porque la base de datos tenía 39 bloques de `udg_institucional` frente a 17 de
+`drudg8b3`. Se llegó a pedir al responsable que buscara el directorio del tema.
+
+```text
+Esa afirmación era FALSA. El error fue de método.
+```
+
+Los bloques se contaron por el **prefijo del ID del archivo de configuración**
+(`block.block.drudg8b3_*`), y la mayoría de los bloques tienen un ID **sin
+prefijo de tema**: `bannerudg`, `listonudg`, `listondecontenido`,
+`mainnavigation`, `redessociales`, `socialmediaudg`, `mailtoudg`,
+`slideudgvideo`, `galeriadevideos`, `contenidofield*` y los
+`views_block__*`.
+
+Contando por el campo `theme:` de cada bloque, que es el dato real:
+
+```text
+CONFIRMADO: drudg8b3           39 bloques
+CONFIRMADO: udg_institucional  39 bloques
+CONFIRMADO: olivero 15, bootstrap 14, claro 9
+```
+
+Son dos conjuntos **equivalentes y paralelos**. No falta nada en `drudg8b3`.
+
+Lo que `drudg8b3` sí tiene, y que el falso hallazgo daba por perdido:
+
+```text
+listonudg              region=liston          plugin=liston_udg
+listondecontenido      region=precontent3     plugin=liston_contenido
+bannerudg              region=content10       plugin=Banner_udg
+socialmediaudg         region=content6        plugin=socialmedia_udg
+mailtoudg              region=content         plugin=mailto_udg
+slideudgvideo          region=slideshow       plugin=Slide_udg
+breadcrumbs            region=precontent3
+mainnavigation         region=sidebar_second  plugin=menu_block:main
+redessociales          region=footer
+views de agenda, galerías, aviso emergente, noticias, vídeos y banner
+```
+
+### Dónde vive realmente la accesibilidad
+
+El responsable entendía que `udg_institucional` existía "para la
+accesibilidad". El dato lo matiza:
+
+```text
+CONFIRMADO: los controles de accesibilidad los aporta el MÓDULO udg_liston,
+            a través del bloque listonudg (plugin liston_udg), que está
+            colocado en la región `liston` de drudg8b3.
+```
+
+Es decir: **la accesibilidad no depende del tema `udg_institucional`**.
+Funciona hoy sobre `drudg8b3`, como se verificó en el HTML servido (Sepia,
+Grises, Invertir de color y la carga de `accesibilityUdg.js`).
+
+Consecuencia práctica, por si al entregar piden retirarla:
+
+```text
+Quitar la accesibilidad = despublicar el bloque listonudg. Trivial y
+reversible. No exige tocar el tema ni el módulo.
+```
+
+Y consecuencia sobre B-04: la restauración de la librería `accesibilidadUdg`
+sigue siendo correcta y necesaria mientras CLAUDE.md FASE 12 la exija. Si esa
+exigencia cambia, cambia por decisión del responsable, no por omisión.
+
+### Lo que queda, y es menor
+
+```text
+39 bloques de configuración apuntan a un tema que no existe en disco.
+```
+
+No afectan al sitio: Drupal sólo renderiza los del tema activo. El único coste
+real es que ensucian los exports de configuración y ya indujeron a error una
+vez. Eliminarlos sería limpieza, no corrección.
+
+```text
+PENDIENTE MENOR: ¿se eliminan esos 39 bloques huérfanos? No se hace por
+iniciativa propia: "despreciar" es ignorar, no borrar.
+```
+
+### Planteamiento original
+
+```text
+ESTADO HISTÓRICO: se creía primero una entrada residual, y después, por un
+error de conteo, que faltaba un tema completo.
 ```
 
 ### La evidencia que cambia el planteamiento
