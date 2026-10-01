@@ -267,10 +267,19 @@ qué archivos *deberían* existir, no verificar que existan.
 - [x] Inventariar campos de los tipos de contenido existentes
   - Evidencia: `docs/content-model.md` (`noticia` con 9 campos,
     `evento_de_agenda` con 7)
-- [~] Diseñar content types, fields, taxonomías, media, autores, eventos
-  - Estado: propuesta redactada con el mapeo origen-destino y 10 huecos
-    identificados. **Seis decisiones de diseño no se pueden cerrar sin B-03.**
-  - Evidencia: `docs/content-model.md`
+- [x] Diseñar e IMPLEMENTAR content types, fields y taxonomías
+  - Evidencia: `tools/setup-content-model.php`, idempotente y reversible
+  - Creados 3 vocabularios: `seccion_historica`, `subseccion_historica`,
+    `credito_editorial`
+  - Creados 8 campos en `node.noticia`: `field_balazo`, `field_cita`,
+    `field_seccion`, `field_subseccion`, `field_autor_texto`,
+    `field_credito_fotografia`, `field_colaboradores`, `field_wp_post_id`,
+    `field_wp_original_id`
+  - Creados 2 campos de trazabilidad en los términos de crédito:
+    `field_wp_user_id`, `field_wp_user_login`
+  - `noticia` pasa de 9 a 17 campos. **No se migró ningún dato**: sólo
+    estructura vacía.
+- [ ] Diseñar la migración de media y de eventos
 - [x] Instalar los módulos ausentes
   - Autorizado por el responsable el 2026-10-01.
   - Evidencia: `docs/decisiones.md` (D-20)
@@ -566,7 +575,7 @@ Formato completo en `docs/decisiones.md`.
 | D-03 | Estrategia de Elementor — **ACOTADA**: 2 359 entradas, no 47 900 | FASE 4 |
 | D-04 | Tratamiento de envíos de formularios (datos personales) | FASE 9 |
 | D-05 | Destino del contenido de demostración de la plantilla | FASE 4 |
-| D-08 | Entrada fantasma `udg_institucional` en `core.extension` | nada |
+| D-08 | **El tema `udg_institucional` falta en el material entregado**: la BD tiene 39 bloques suyos y `drudg8b3` sólo 17 | FASE 11 |
 | D-10 | Purga de credenciales del historial del repositorio Drupal | publicación del docroot |
 | D-11 | Reparación del mojibake preexistente en `dc8_posts` | FASE 9 (no bloquea la carga) |
 | D-16 | Las 185 colisiones de slug histórico y los slugs con entidades HTML roto | FASE 10 |
@@ -640,6 +649,16 @@ Formato completo en `docs/decisiones.md`.
    indexadas. Ver D-16.
 15. **46 713 imágenes sin texto alternativo** (el 98.67 % de 48 358). La FASE
    12 no puede preservar una accesibilidad que no existe en el origen.
+16. **Falta el tema `udg_institucional` del material entregado.** La base de
+   datos tiene 39 bloques configurados para él; `drudg8b3`, el que sí existe,
+   tiene 17. Las 18 regiones que usan esos bloques existen todas en
+   `drudg8b3`, lo que apunta a que es un derivado cuyos archivos no se
+   entregaron. El sitio renderiza, pero con la mitad del diseño institucional.
+   Afecta a la FASE 11. Ver D-08.
+17. **Deriva entre la configuración exportada del template y su base de
+   datos.** El export recogió 124 archivos de configuración que nunca se
+   habían exportado y 6 que ya no existen en la base. No lo causó este
+   proyecto: la configuración del template llevaba tiempo sin reexportarse.
 10. **7 811 URLs históricas sin inventariar hasta hoy.** El mecanismo de
    `_wp_old_slug` de WordPress es silencioso: no aparece en ninguna pantalla de
    administración. Hace **obligatorio** el módulo `redirect`, que no está

@@ -546,11 +546,113 @@ durante el proyecto, y que el acceso disponible es únicamente de lectura?
 
 ---
 
-## D-08 — Entrada fantasma `udg_institucional` en core.extension
+## D-08 — El tema `udg_institucional` que falta en el material entregado
 
 ```text
 DECISIÓN REQUERIDA
-Bloquea: nada (cosmético, pero conviene resolverlo pronto)
+Bloquea: FASE 11 (reconstrucción visual). Ya NO es cosmético.
+Reclasificado el 2026-10-01 con evidencia nueva.
+```
+
+### La evidencia que cambia el planteamiento
+
+Al exportar la configuración tras crear el modelo de contenido apareció algo
+que no se veía antes:
+
+```text
+CONFIRMADO: la base de datos contiene 39 bloques configurados para el tema
+            udg_institucional, un tema que NO existe en disco.
+CONFIRMADO: drudg8b3, el tema que sí existe, tiene sólo 17 bloques.
+CONFIRMADO: las 18 regiones que usan esos 39 bloques existen TODAS en
+            drudg8b3.
+```
+
+Bloques por tema en la base de datos:
+
+| Tema | Bloques | ¿Existe en disco? |
+|---|---:|---|
+| **`udg_institucional`** | **39** | **NO** |
+| `drudg8b3` | 17 | sí |
+| `olivero` | 15 | sí (core) |
+| `bootstrap` | 14 | sí (tema base) |
+| `claro` | 9 | sí (core) |
+
+Regiones que usan los 39 bloques ausentes: `content` (9), `sidebar_second` (5),
+`footer` (4), `precontent3` (3), `content3` (3), `slideshow` (2), `content10`
+(2), y una cada una en `sidebar_first`, `precontent`,
+`navigation_collapsible`, `liston`, `highlighted`, `header`, `content6`,
+`content5`, `content4`, `content2`, `content11`.
+
+```text
+Las 18 están declaradas en drudg8b3.info.yml, que declara 26.
+```
+
+### Qué significa
+
+```text
+HIPÓTESIS FUERTE: udg_institucional es un derivado, una evolución o un
+renombrado de drudg8b3, y sus archivos NO se entregaron con el template.
+```
+
+Sustento: comparte exactamente la estructura de regiones, y la base de datos lo
+tenía como tema por defecto con un diseño de bloques más del doble de completo.
+
+Consecuencia de lo que ya se aplicó en D-01:
+
+```text
+El sitio RENDERIZA, pero con 17 bloques en lugar de 39.
+```
+
+La corrección de D-01 fue necesaria y sigue siendo correcta —sin ella el sitio
+no mostraba nada— pero ahora se sabe que el resultado es un **diseño reducido**,
+no el diseño institucional completo. Eso afecta directamente a la FASE 11, que
+tiene como criterio parecerse al Gaceta original usando la arquitectura del
+template.
+
+### Alternativas
+
+**Opción A — conseguir los archivos del tema `udg_institucional`.**
+Pedirlos a quien entregó el template. Si existen, se restaura el diseño
+completo sin inventar nada y los 39 bloques vuelven a tener sentido.
+
+**Opción B — reasignar los 39 bloques a `drudg8b3`.**
+Técnicamente viable y verificado: todas las regiones destino existen. Se
+cambiaría el campo `theme` de esos 39 bloques de configuración.
+
+**Opción C — dejarlo como está.**
+El sitio funciona con 17 bloques. Los 39 quedan como configuración huérfana.
+
+**Riesgo.** La opción B es una modificación del diseño del sitio: si luego
+aparecen los archivos de `udg_institucional`, habría dos juegos de bloques
+compitiendo y haría falta deshacerlo. Además `udg_institucional` podría
+declarar regiones o plantillas propias que `drudg8b3` no tiene, en cuyo caso el
+resultado se parecería al diseño original pero no sería igual. La opción C deja
+el sitio con la mitad del diseño institucional, lo que arrastra un problema a
+la FASE 11.
+
+**Recomendación técnica neutral.** Opción A primero, y sólo si los archivos no
+existen, la opción B. El motivo es el mismo que rige todo el proyecto: es
+preferible recuperar el artefacto original que reconstruirlo por aproximación.
+La petición es concreta y barata: el directorio del tema `udg_institucional`.
+
+```text
+NO se reasignan los bloques por iniciativa propia. Es una modificación visible
+del sitio y es exactamente el tipo de incertidumbre que no debe resolverse sin
+autorización.
+```
+
+**Preguntas.**
+
+1. ¿Existe el tema `udg_institucional`? ¿Se puede pedir su directorio a quien
+   entregó el template?
+2. Si no existe, ¿se autoriza reasignar los 39 bloques a `drudg8b3`?
+3. ¿`drudg8b3` es la versión anterior de `udg_institucional`, o son dos temas
+   distintos con la misma base de regiones?
+
+### Planteamiento original
+
+```text
+ESTADO HISTÓRICO: se creía una entrada residual y cosmética en core.extension.
 ```
 
 **Contexto.** Tras corregir D-01, `core.extension:theme` sigue listando
