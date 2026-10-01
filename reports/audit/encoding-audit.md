@@ -4,6 +4,7 @@ Fecha: 2026-09-30
 Fase del roadmap: FASE 2, *gate* crítico (CLAUDE.md §11, §33, §47)
 
 ```text
+REVISIÓN 3: corregida con el esquema real de columnas leído de la base cargada.
 REVISIÓN 2: corregida tras el dictamen del auditor de migración.
 ```
 
@@ -15,10 +16,14 @@ a las anteriores.
 ## Conclusión
 
 ```text
+CONFIRMADO: las columnas de texto de dc8_posts son utf8 (utf8mb3), NO latin1.
+            El latin1 del CREATE TABLE es sólo el default de tabla y no
+            gobierna ninguna columna.
 CONFIRMADO: el dump completo es UTF-8 válido. Los 3 544 549 259 bytes.
 CONFIRMADO: el dump debe importarse como UTF-8, SIN conversión de charset.
 CONFIRMADO: existe mojibake residual, minoritario y localizado.
-HIPÓTESIS:  ese mojibake es de origen editorial, preexistente.
+CONFIRMADO: ese mojibake NO es un artefacto de charset. Estaba en el contenido.
+DESCONOCIDO: qué proceso lo introdujo (redacción o la primera migración).
 ```
 
 La advertencia crítica de CLAUDE.md §11 queda atendida: **no se debe ejecutar
@@ -46,7 +51,12 @@ CREATE TABLE:              68
 INSERT INTO:           67 217
 ```
 
-## Paso 1 — La cabecera del dump explica el conflicto
+## Paso 1 — El conflicto de §11 se disuelve al leer el esquema completo
+
+```text
+REVISIÓN 3: la explicación de este paso estaba incompleta. Ver la nota al
+final de la sección.
+```
 
 ```text
 CONFIRMADO: el dump lo generó phpMyAdmin 4.9.1
@@ -54,19 +64,93 @@ CONFIRMADO: servidor de origen 5.5.68-MariaDB, PHP 7.4.33
 CONFIRMADO: la cabecera declara  /*!40101 SET NAMES utf8mb4 */;
 ```
 
-Este dato resuelve la aparente contradicción de CLAUDE.md §11.
+### El dato decisivo: las COLUMNAS no son latin1
 
-`dc8_posts` declara `DEFAULT CHARSET=latin1` **en el esquema**, pero el volcado
-se hizo con la conexión en `utf8mb4`. MySQL convierte del charset de la columna
-al de la conexión al leer. Por lo tanto:
+CLAUDE.md §11 marca como crítico que `dc8_posts` declare
+`DEFAULT CHARSET=latin1`. Eso es cierto, y aun así **no hay conflicto**, porque
+en MySQL el charset de tabla es sólo el **valor por omisión** para las columnas
+que no declaran el suyo.
 
-```text
-El texto que contiene el archivo .sql YA ESTÁ en UTF-8,
-aunque la sentencia CREATE TABLE siga diciendo latin1.
+Verificado leyendo el `CREATE TABLE` directamente del dump:
+
+```sql
+CREATE TABLE `dc8_posts` (
+  `foto1`                 varchar(100) CHARACTER SET utf8 COLLATE utf8_unicode_ci ...
+  `balazo`                text         CHARACTER SET utf8 COLLATE utf8_unicode_ci ...
+  `seccion`               varchar(25)  CHARACTER SET utf8 COLLATE utf8_unicode_ci ...
+  `subseccion`            varchar(25)  CHARACTER SET utf8 COLLATE utf8_unicode_ci ...
+  `post_content`          longtext     CHARACTER SET utf8 COLLATE utf8_unicode_ci ...
+  `post_title`            text         CHARACTER SET utf8 COLLATE utf8_unicode_ci ...
+  `post_content_filtered` longtext     CHARACTER SET utf8 COLLATE utf8_unicode_ci ...
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 ```
 
-La declaración `latin1` describe cómo estaban almacenados los bytes en el
-servidor de origen, **no** cómo están escritos en el archivo.
+```text
+CONFIRMADO: las 19 columnas de texto de dc8_posts declaran EXPLÍCITAMENTE
+            CHARACTER SET utf8 COLLATE utf8_unicode_ci.
+CONFIRMADO: no existe ni una sola columna de texto que herede el latin1
+            de la tabla.
+```
+
+Comprobado también contra la base cargada, vía `information_schema.COLUMNS`:
+las 19 columnas de texto aparecen como `utf8` / `utf8_unicode_ci`, mientras el
+`TABLE_COLLATION` es `latin1_swedish_ci`.
+
+```text
+El latin1 de la tabla es una etiqueta sin efecto: no gobierna ningún dato.
+```
+
+### Por qué esto importa
+
+La cadena completa queda sin ningún paso de conversión arriesgado:
+
+```text
+Columna utf8mb3  ->  volcado con SET NAMES utf8mb4  ->  archivo .sql
+```
+
+MySQL sólo tuvo que pasar de utf8mb3 a utf8mb4, que es una **ampliación
+compatible**: todo utf8mb3 válido es utf8mb4 válido, byte por byte. No hubo
+reinterpretación de bytes en ningún momento.
+
+```text
+El texto del archivo .sql es el mismo que estaba en las columnas.
+```
+
+### Consecuencia sobre la causa del mojibake
+
+Este hallazgo **refuerza decisivamente** la explicación del daño residual.
+
+Si no existe ningún paso de conversión de charset en toda la cadena, entonces
+**ningún paso de conversión pudo introducir el mojibake**. Las secuencias `â€`
+estaban almacenadas como esos caracteres en la columna.
+
+```text
+CONFIRMADO: el mojibake NO es un artefacto del charset de las columnas, ni del
+volcado, ni de la carga. Estaba en el contenido almacenado.
+```
+
+Lo que sigue siendo DESCONOCIDO es **qué proceso** lo introdujo: texto pegado
+desde Word o un PDF por la redacción, o la primera migración hacia WordPress
+(ver `original_id` en `reports/audit/content-counts.md`). Para la decisión
+D-11 esa distinción ya no importa: en ambos casos es daño preexistente al
+contenido, no un problema de codificación que la migración deba resolver.
+
+### Nota sobre la revisión 2 de este documento
+
+La revisión 2 explicaba la ausencia de doble codificación diciendo que
+«phpMyAdmin ya convirtió el contenido a UTF-8 al volcarlo» y que el `latin1`
+del `CREATE TABLE` «describe cómo estaban almacenados los bytes en el servidor
+de origen».
+
+```text
+Eso era incorrecto. Las columnas nunca fueron latin1.
+```
+
+La conclusión operativa (**no convertir**) no cambia: era y sigue siendo
+correcta. Lo que cambia es el motivo, y a mejor: no depende de que una
+conversión saliera bien, sino de que **nunca hubo conversión que pudiera salir
+mal**. Se corrige porque un motivo equivocado habría llevado a razonar mal
+sobre las demás tablas.
 
 ## Paso 2 — Validación UTF-8 sobre el archivo completo
 

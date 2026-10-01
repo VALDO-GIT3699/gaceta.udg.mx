@@ -25,7 +25,15 @@ PENDIENTE:  dc8_postmeta (2.3 GB) y dc8_post_views (242 MB). Etapa 2 de D-02.
 Tabla principal cargada:
 
 ```text
-dc8_posts   162 957 filas   731.2 MB datos + 12.7 MB índices   MyISAM / latin1_swedish_ci
+dc8_posts   162 957 filas   731.2 MB datos + 12.7 MB índices   MyISAM
+TABLE_COLLATION: latin1_swedish_ci
+COLUMNAS de texto: las 19, utf8 / utf8_unicode_ci
+```
+
+```text
+IMPORTANTE: el latin1 es sólo el default de la TABLA. Ninguna columna lo
+hereda: las 19 columnas de texto declaran explícitamente CHARACTER SET utf8.
+Ver reports/audit/encoding-audit.md, revisión 3.
 ```
 
 ## VALIDACIÓN DEL ENCODING, DE EXTREMO A EXTREMO
@@ -45,10 +53,17 @@ CONFIRMADO: el texto sobrevive el viaje completo, intacto.
 La cadena demostrada es:
 
 ```text
-1. El dump contiene UTF-8 correcto         (análisis de bytes, encoding-audit.md)
-2. Carga con la conexión en utf8mb4        -> MySQL convierte UTF-8 a latin1
-3. Lectura con la conexión en utf8mb4      -> MySQL convierte latin1 a UTF-8
+1. El dump contiene UTF-8 correcto      (análisis de bytes, encoding-audit.md)
+2. Carga con la conexión en utf8mb4     -> columnas utf8mb3, conversión
+                                           compatible y sin pérdida
+3. Lectura con la conexión en utf8mb4   -> utf8mb3 a utf8mb4, compatible
 4. Resultado: "Buzón" y "Música" correctos
+```
+
+```text
+En ningún punto de la cadena interviene latin1. Los interrogantes que aparecen
+sin el parámetro los produce el cliente al convertir a la página de códigos de
+la consola, no la base de datos.
 ```
 
 Los caracteres `?` que aparecen sin el parámetro **no son corrupción de datos**:

@@ -28,6 +28,10 @@ Uso:
     python tools/extract-tables.py SALIDA.sql --grupo editorial
     python tools/extract-tables.py --listar
 
+    # Volcar a stdout para cargar sin archivo intermedio. Útil cuando el disco
+    # está justo: evita escribir los 2.3 GB de dc8_postmeta antes de cargarlos.
+    python tools/extract-tables.py - --grupo postmeta | mysql -u root gaceta_auditoria
+
 Grupos predefinidos:
     editorial  todo menos dc8_postmeta y dc8_post_views (~1 GB)
     postmeta   sólo dc8_postmeta (~2.3 GB)
@@ -139,12 +143,20 @@ def main():
 
     cabecera_fin = creates[0][0]
 
-    print("Dump:    %s" % dump)
-    print("Salida:  %s" % salida)
-    print("Tablas:  %d de %d" % (len(seleccion), len(todas)))
+    # Con "-" se vuelca a stdout, para canalizar directamente a mysql sin
+    # escribir un archivo intermedio. Útil cuando el disco está justo: evita
+    # los 2.3 GB de dc8_postmeta en disco antes de cargarlos.
+    # Los mensajes informativos van entonces a stderr, para no contaminar el SQL.
+    a_stdout = (salida == "-")
+    log = sys.stderr if a_stdout else sys.stdout
+
+    print("Dump:    %s" % dump, file=log)
+    print("Salida:  %s" % ("stdout" if a_stdout else salida), file=log)
+    print("Tablas:  %d de %d" % (len(seleccion), len(todas)), file=log)
 
     escrito = 0
-    with open(dump, "rb") as fin_fh, open(salida, "wb") as out:
+    out = sys.stdout.buffer if a_stdout else open(salida, "wb")
+    with open(dump, "rb") as fin_fh:
         # Cabecera original: trae SET NAMES utf8mb4 y los SET de compatibilidad.
         copiar_region(fin_fh, out, 0, cabecera_fin)
         escrito += cabecera_fin
@@ -153,7 +165,7 @@ def main():
             ini, fin = por_nombre[t]
             copiar_region(fin_fh, out, ini, fin)
             escrito += fin - ini
-            print("  + %-40s %12d bytes" % (t, fin - ini))
+            print("  + %-40s %12d bytes" % (t, fin - ini), file=log)
 
         # Sección de ALTER TABLE, filtrada a las tablas seleccionadas.
         if inicio_alters is not None:
@@ -168,14 +180,20 @@ def main():
                 if m and m.group(1).decode("ascii", "replace") in sel:
                     out.write(b"ALTER TABLE " + b)
                     n += 1
-            print("  + %d sentencias ALTER TABLE" % n)
+            print("  + %d sentencias ALTER TABLE" % n, file=log)
 
-    print()
-    print("Escrito: %d bytes (%.1f MB)" % (escrito, escrito / 1048576.0))
-    print()
-    print("El dump original NO fue modificado.")
-    print("Cargar con (sin forzar charset, ver reports/audit/encoding-audit.md):")
-    print('  mysql -u root gaceta_auditoria < "%s"' % salida)
+    out.flush()
+    if not a_stdout:
+        out.close()
+
+    print(file=log)
+    print("Escrito: %d bytes (%.1f MB)" % (escrito, escrito / 1048576.0), file=log)
+    print(file=log)
+    print("El dump original NO fue modificado.", file=log)
+    if not a_stdout:
+        print("Cargar con (sin forzar charset, ver "
+              "reports/audit/encoding-audit.md):", file=log)
+        print('  mysql -u root gaceta_auditoria < "%s"' % salida, file=log)
 
 
 if __name__ == "__main__":
