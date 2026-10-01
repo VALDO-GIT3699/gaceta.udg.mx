@@ -197,6 +197,31 @@ $campos = [
     'description' => 'dc8_posts.original_id. 25 121 registros lo tienen: este contenido ya fue migrado una vez.',
   ],
 
+  // --- Trazabilidad también en las páginas. ---
+  //
+  // CLAUDE.md §35 exige poder responder dónde terminó cada registro de origen,
+  // y eso vale para las 185 páginas igual que para las 36 666 noticias. El
+  // almacenamiento ya existe (lo creó el bloque de noticia): aquí sólo se
+  // añade la instancia al bundle `page`.
+  'field_wp_post_id__page' => [
+    'campo_real' => 'field_wp_post_id',
+    'entity_type' => 'node',
+    'bundle' => 'page',
+    'type' => 'integer',
+    'cardinality' => 1,
+    'label' => 'ID de origen en WordPress',
+    'description' => 'dc8_posts.ID de la página de origen.',
+  ],
+  'field_wp_original_id__page' => [
+    'campo_real' => 'field_wp_original_id',
+    'entity_type' => 'node',
+    'bundle' => 'page',
+    'type' => 'integer',
+    'cardinality' => 1,
+    'label' => 'ID del sistema anterior a WordPress',
+    'description' => 'dc8_posts.original_id de la página de origen.',
+  ],
+
   // --- Trazabilidad de los términos de crédito. ---
 
   'field_wp_user_id' => [
@@ -222,7 +247,11 @@ $campos = [
 // Creación.
 // ---------------------------------------------------------------------------
 
-foreach ($campos as $nombre => $d) {
+foreach ($campos as $clave => $d) {
+  // La clave del array puede llevar un sufijo como '__page' para declarar el
+  // MISMO campo en dos bundles distintos. El nombre real del campo se toma de
+  // 'campo_real' cuando existe.
+  $nombre = $d['campo_real'] ?? $clave;
   $tipo_entidad = $d['entity_type'];
   $bundle = $d['bundle'];
 

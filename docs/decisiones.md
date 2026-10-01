@@ -1822,3 +1822,58 @@ opción C el problema casi desaparece.
 **Pregunta.** ¿Se acepta la recomendación (marcador en las 735, descartar las
 5 vacías con autorización)? Y si no se descartan, ¿qué fecha se les pone,
 sabiendo que cualquiera es inventada?
+
+---
+
+## D-23 — Los 40 comentarios aprobados necesitan un campo de comentarios
+
+```text
+DECISIÓN REQUERIDA
+Bloquea: la migración de comentarios (§28)
+```
+
+**Contexto.** CLAUDE.md §28 exige tratar los comentarios y no descartarlos sin
+autorización.
+
+**Datos confirmados.**
+
+```text
+CONFIRMADO: 6 388 comentarios en total.
+            6 346 pendientes de moderación (spam en inglés)
+               40 aprobados
+                2 marcados como spam
+CONFIRMADO: el plugin disable-comments-rb está ACTIVO en WordPress, es decir
+            que los comentarios YA están deshabilitados en el origen.
+CONFIRMADO: en Drupal existe el tipo de comentario `comment`, pero NINGÚN
+            tipo de contenido tiene un campo de comentarios asignado.
+```
+
+**Problema.** Sin un campo de comentarios en `noticia`, los 40 comentarios
+aprobados no tienen dónde ir. Y añadir ese campo es una decisión funcional, no
+sólo técnica: define si el sitio nuevo admite comentarios.
+
+**Opciones.**
+
+- **A.** Añadir el campo con la configuración **"cerrado"**: los 40 comentarios
+  históricos se migran y se muestran, pero nadie puede escribir nuevos.
+- **B.** Añadir el campo **abierto**. El sitio admitiría comentarios nuevos.
+- **C.** No añadir el campo y no migrar los comentarios.
+
+**Riesgo.** La opción B abre una superficie de moderación y de spam que el
+origen ya había cerrado: WordPress tiene 6 346 comentarios de spam en cola
+precisamente por eso. La opción C descarta 40 comentarios reales de lectores,
+que son contenido de terceros; el dump los conserva, pero desaparecen del
+sitio.
+
+**Recomendación técnica neutral.** Opción A. Reproduce el estado actual del
+origen —comentarios cerrados— y a la vez preserva los 40 reales, que es lo que
+§28 pide. No abre ninguna superficie nueva.
+
+Sobre los 6 346 pendientes: son spam en inglés, demostrado por análisis de
+tokens en `reports/audit/encoding-audit.md` (`the` 16 615 veces frente a ` de `
+76; `casino` 98; `viagra` 16). No se migran, pero **tampoco se destruyen**: el
+dump los conserva. Si se quiere constancia formal, se puede exportar la lista a
+`work/` antes de darlos por descartados.
+
+**Pregunta.** ¿Se añade el campo de comentarios en modo cerrado para preservar
+los 40 reales? ¿Y se confirma que los 6 346 de spam no se migran?

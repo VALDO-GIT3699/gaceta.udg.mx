@@ -395,3 +395,69 @@ GET /node/<nid>  ->  HTTP 301 hacia /Nuevas-fachadas-para-Tonala
 El módulo `redirect` instalado en D-20 ya hace la redirección canónica desde la
 ruta interna hacia el alias. Es el comportamiento correcto y confirma que el
 módulo funciona antes de usarlo para las 7 519 redirecciones históricas.
+
+---
+
+## Lote 4 — Páginas
+
+```text
+Fecha:      2026-10-01
+Migración:  gaceta_pagina
+RESULTADO:  PASS
+```
+
+| source | created | updated | failed | ignored |
+|---:|---:|---:|---:|---:|
+| 185 | **185** | 0 | **0** | 0 |
+
+### Conciliación origen contra destino
+
+| | Páginas | Publicadas |
+|---|---:|---:|
+| Origen (`dc8_posts`, `post_type='page'`) | 185 | 120 |
+| Destino (Drupal, `type='page'`) | **185** | **120** |
+
+```text
+CONFIRMADO: conciliación exacta, también en el estado de publicación.
+```
+
+Las 47 páginas privadas y las 18 en borrador entraron como **no publicadas**.
+En WordPress `private` significa publicada con visibilidad restringida, que no
+equivale al publicado de Drupal. Ninguna se descartó, y su estado original es
+recuperable por el campo de trazabilidad.
+
+### Decisiones aplicadas, heredadas del piloto
+
+Las tres correcciones que el piloto de noticias descubrió se aplicaron aquí
+desde el principio, sin repetir los errores:
+
+```text
+Entidades HTML del título: decodificadas.
+Fechas inválidas: timestamp 0, sin inventar ninguna.
+Alias vacío cuando no hay slug: 15 páginas lo tienen vacío.
+```
+
+Las páginas no usan las columnas editoriales (`balazo`, `cita`, `seccion`,
+`subseccion`): son propias del corpus periodístico. El mapeo es
+deliberadamente más simple.
+
+### Trazabilidad extendida a las páginas
+
+`field_wp_post_id` y `field_wp_original_id` existían sólo en `noticia`. Se
+añadieron al bundle `page`, porque CLAUDE.md §35 no distingue: hay que poder
+responder dónde terminó cada registro, y eso vale para las 185 páginas igual
+que para las 36 666 noticias.
+
+El almacenamiento es el mismo; sólo se añadió la instancia. Para permitirlo,
+`tools/setup-content-model.php` admite ahora declarar el mismo campo en dos
+bundles mediante una clave con sufijo y un `campo_real`.
+
+### El problema de D-16 también aparece aquí
+
+```text
+CONFIRMADO: 185 páginas con 171 slugs distintos -> 14 slugs duplicados.
+CONFIRMADO: 6 alias duplicados en total en la tabla path_alias.
+```
+
+Es el mismo caso de la decisión **D-16**, a menor escala. Se deja constancia de
+que afecta también a las páginas y no sólo a las noticias.
