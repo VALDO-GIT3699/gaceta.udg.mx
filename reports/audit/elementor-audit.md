@@ -5,18 +5,72 @@ Fase del roadmap: FASE 2
 Riesgo que atiende: CLAUDE.md §18 (riesgo crítico)
 Decisión que alimenta: **D-03**
 
-## Resumen
+## Resumen — RESUELTO con SQL real
 
 ```text
-CONFIRMADO: Elementor 3.15.3 y Elementor Pro 3.15.1 instalados.
-HIPÓTESIS:  del orden de 47 900 contenidos tienen datos de Elementor.
-HIPÓTESIS:  esos datos ocupan la mayor parte de los 2.3 GB de dc8_postmeta,
-            es decir, la mayor masa de datos de todo el proyecto.
+REVISIÓN 2: este reporte estimaba ~47 900 contenidos en riesgo. Con la base de
+auditoría cargada, la cifra real es 2 472, y el escenario catastrófico NO
+ocurre. Detalle completo en reports/audit/postmeta-audit.md.
 ```
 
 ```text
-El riesgo que CLAUDE.md §18 anticipaba no sólo se confirma: es mayor de lo
-que el contrato suponía.
+CONFIRMADO: Elementor 3.15.3 y Elementor Pro 3.15.1 instalados y ACTIVOS.
+CONFIRMADO: 47 896 filas de _elementor_data, 1 286.5 MB.
+CONFIRMADO: 45 424 de ellas (94.8 %) están en REVISIONES, no en contenido.
+CONFIRMADO: sólo 2 472 filas corresponden a contenido real.
+CONFIRMADO: de las 2 359 entradas PUBLICADAS con Elementor, CERO tienen
+            post_content vacío.
+```
+
+```text
+El riesgo que CLAUDE.md §18 anticipaba existe, pero afecta al 6.4 % del corpus
+publicado y no destruye el contenido.
+```
+
+### La prueba
+
+| `post_type` | Estado | Con Elementor | `post_content` vacío | Con texto |
+|---|---|---:|---:|---:|
+| `post` | publish | 2 359 | **0** | **2 359** |
+| `elementor_library` | publish | 68 | 5 | 63 |
+| `page` | publish | 14 | 0 | 14 |
+| `post` | draft | 13 | 0 | 13 |
+| `page` | draft | 7 | 1 | 6 |
+| `post` | trash | 6 | 0 | 6 |
+| `page` | private | 5 | 1 | 4 |
+
+```text
+post_content es una fuente FIABLE para el corpus completo.
+```
+
+Elementor se usó para **maquetar** 2 359 entradas, pero el texto siguió
+viviendo en `post_content`. Los 5 `elementor_library` vacíos son plantillas, no
+contenido editorial.
+
+### La reserva que se mantiene
+
+```text
+CUIDADO: "post_content tiene más de 50 caracteres" NO demuestra que esté
+COMPLETO. Queda descartada la pérdida TOTAL; la pérdida PARCIAL en esos 2 359
+registros sigue sin medir.
+```
+
+```text
+PENDIENTE: comparar una muestra de los 2 359 contra producción (§46, sólo
+lectura). Es una muestra manejable, no un replanteo del proyecto.
+```
+
+### Consecuencia para el volumen
+
+Si no se migran las revisiones, el JSON de Elementor a tratar baja de
+1 286.5 MB a unos **66 MB**.
+
+---
+
+## Planteamiento original del riesgo
+
+```text
+Se conserva como registro de lo que se temía y de cómo se acotó.
 ```
 
 ## Las cifras
@@ -205,12 +259,28 @@ PROHIBIDO: migrar contenido asumiendo que post_content está completo.
 PROHIBIDO: declarar migrado un contenido del grupo (c) sin extracción.
 ```
 
-## Estado
+## Estado — actualizado
 
 ```text
-D-03: ABIERTA. No se puede formular con alternativas reales sin el paso 1.
-GATE FASE 9 (migración de contenido): NO SUPERABLE mientras D-03 esté abierta.
+D-03: ACOTADA. El paso 1 (medir) está ejecutado.
+GATE FASE 9: DESBLOQUEADO en lo que dependía de D-03.
 ```
 
-Este es, con diferencia, el mayor riesgo técnico del proyecto: afecta
-potencialmente a 47 900 contenidos y a más de la mitad del volumen de datos.
+El riesgo que bloqueaba la FASE 9 era que `post_content` no fuera fiable. Está
+demostrado que lo es para el corpus publicado.
+
+Lo que queda de D-03 es acotado y concreto:
+
+```text
+- [ ] Verificar por muestra que post_content de los 2 359 con Elementor no sea
+      una versión degradada de lo que Elementor renderiza.
+- [ ] Decidir qué hacer con la maquetación de esos 2 359: reconstruirla con el
+      template institucional, o aceptar el contenido en flujo simple.
+- [ ] Recorrer el JSON en busca de referencias de media (sigue siendo
+      necesario para el manifiesto, ver docs/media-strategy.md).
+```
+
+```text
+Dejó de ser el mayor riesgo del proyecto. El mayor riesgo pasa a ser la
+ausencia de los archivos de media (B-02 / D-15).
+```

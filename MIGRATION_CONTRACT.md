@@ -205,11 +205,19 @@ seccion/subseccion NO forman jerarquía: Crónica aparece bajo 7 secciones.
   - Evidencia: `reports/audit/content-counts.md`. Con el cliente en utf8mb4 el
     texto se lee intacto (`Buzón`, `Música`); sin él se ven interrogantes, que
     son un artefacto del cliente y no corrupción del dato.
-- [ ] Confirmar metadatos, Elementor y Yoast por contenido *(etapa 2 de D-02)*
+- [x] Confirmar metadatos, Elementor y Yoast por contenido
+  - Evidencia: `reports/audit/postmeta-audit.md`
+  - Reproducible con: `tools/audit-queries-postmeta.sql`
+  - `dc8_postmeta` cargada sin errores: 720 670 filas, 2 103 MB.
 
 ```text
 GATE CRÍTICO FASE 2 (encoding): SUPERADO Y VALIDADO CON DATOS
+GATE FASE 2 (completo): SUPERADO
 ```
+
+Encoding demostrado y validado de extremo a extremo, conteos definitivos,
+metadatos inventariados, Elementor dimensionado, Yoast inventariado,
+formularios y eventos confirmados vacíos.
 
 La incertidumbre sobre el encoding que CLAUDE.md §33 señalaba como bloqueante
 **ya no existe**. Está demostrado sobre los 3 544 549 259 bytes del dump que el
@@ -529,12 +537,16 @@ Formato completo en `docs/decisiones.md`.
 | ID | Asunto | Bloquea |
 |---|---|---|
 | D-02 | Nombre, ubicación y parámetros de la base de auditoría | B-03, FASE 1, FASE 2 |
-| D-03 | Estrategia de extracción de Elementor | FASE 4, FASE 9 |
+| D-03 | Estrategia de Elementor — **ACOTADA**: 2 359 entradas, no 47 900 | FASE 4 |
 | D-04 | Tratamiento de envíos de formularios (datos personales) | FASE 9 |
 | D-05 | Destino del contenido de demostración de la plantilla | FASE 4 |
 | D-08 | Entrada fantasma `udg_institucional` en `core.extension` | nada |
 | D-10 | Purga de credenciales del historial del repositorio Drupal | publicación del docroot |
 | D-11 | Reparación del mojibake preexistente en `dc8_posts` | FASE 9 (no bloquea la carga) |
+| D-16 | Las 185 colisiones de slug histórico y los slugs con entidades HTML roto | FASE 10 |
+| D-17 | Resolución de ruta de las 16 102 referencias de `foto1` (sólo nombre, sin carpeta) | FASE 3, FASE 6 |
+| D-18 | Tratamiento de 46 713 imágenes sin texto alternativo | FASE 12 |
+| D-19 | Si se migran las 77 307 revisiones | FASE 9 |
 | D-12 | Restaurar o no la librería `udg_media` (lleva API keys de terceros) | B-04, FASE 12 |
 | D-13 | Qué copia de `drudg8b3`/`udg_liston` es la autoritativa | FASE 11 |
 
@@ -555,13 +567,12 @@ Formato completo en `docs/decisiones.md`.
    dañaría el 98.4 % del contenido que está correcto.
 2. **Media ausente (B-02).** Agravado: no existe ninguna copia de los archivos.
    Las FASES 3 y 6 están bloqueadas por dependencia externa.
-3. **Elementor (D-03): el mayor riesgo técnico del proyecto, ya dimensionado.**
-   `_elementor_data` aparece ~47 896 veces, y se estima que ocupa la mayor
-   parte de los 2.3 GB de `dc8_postmeta`, es decir más de la mitad de todo el
-   dump. Si `post_content` está vacío en esos contenidos, migrarlo sin extraer
-   el JSON produciría hasta 47 900 contenidos vacíos **con los conteos
-   saliendo correctos**: un éxito aparente, el peor modo de fallo posible.
-   Evidencia: `reports/audit/elementor-audit.md`.
+3. **Elementor (D-03): RIESGO DESCARTADO en su forma grave.** De las 47 896
+   filas de `_elementor_data`, **45 424 (94.8 %) están en revisiones**. Sólo
+   2 359 entradas publicadas usan Elementor, y **ninguna tiene `post_content`
+   vacío**. `post_content` es una fuente fiable para el corpus completo. Queda
+   verificar por muestra que no sea una versión degradada, lo cual es acotado.
+   Evidencia: `reports/audit/postmeta-audit.md`.
 3b. **Fiabilidad de la propia documentación.** El auditor halló tres
    afirmaciones verificables de este proyecto que eran falsas: «no se modificó
    udg_liston», «0 credenciales en el índice» y «los mecanismos de
@@ -594,6 +605,15 @@ Formato completo en `docs/decisiones.md`.
 9. **SSO institucional.** `wp-content/mu-plugins/sso.php` implica autenticación
    federada. No hay equivalente instalado en el template y el roadmap no lo
    contempla.
+13. **`foto1` no tiene ruta, sólo nombre de archivo.** Las 16 102 referencias
+   de imagen del contenido histórico no dicen en qué carpeta está el archivo.
+   Sin resolverlo, el manifiesto de media no puede calcular su ruta de destino.
+   Ver D-17.
+14. **Slugs con entidades HTML roto en URLs reales.** `Ruth-Padilla-Muntilde;oz`
+   debería ser `Ruth-Padilla-Muñoz`. Son URLs que hoy existen y están
+   indexadas. Ver D-16.
+15. **46 713 imágenes sin texto alternativo** (el 98.67 % de 48 358). La FASE
+   12 no puede preservar una accesibilidad que no existe en el origen.
 10. **7 811 URLs históricas sin inventariar hasta hoy.** El mecanismo de
    `_wp_old_slug` de WordPress es silencioso: no aparece en ninguna pantalla de
    administración. Hace **obligatorio** el módulo `redirect`, que no está
