@@ -145,3 +145,145 @@ Los 7 724 términos de etiqueta se migraron sin su slug de origen. La FASE 10
 necesitará ese slug para reproducir las rutas /tag/<slug>/ indexadas. El dato
 está disponible en el origen y se añadirá al configurar pathauto.
 ```
+
+---
+
+## Lote 2 — Piloto de contenido (FASE 5)
+
+```text
+Fecha:       2026-10-01
+Migración:   gaceta_noticia
+Alcance:     60 entradas, las más antiguas por fecha
+RESULTADO:   PASS, tras tres iteraciones
+```
+
+CLAUDE.md FASE 5 exige no migrar todo de golpe y que el 100 % de los casos
+piloto tenga resultado conocido. Esto es lo que encontró.
+
+### Conteos por iteración
+
+| Iteración | source | created | failed | Causa del fallo |
+|---|---:|---:|---:|---|
+| 1ª (25 registros) | 25 | 18 | **7** | `field_balazo` demasiado corto |
+| 2ª (40 registros) | 40 | 35 | **5** | título nulo en el origen |
+| 3ª (60 registros) | 60 | 60 | **0** | — |
+
+```text
+El piloto encontró dos defectos de DISEÑO PROPIO antes de tocar las 36 666
+entradas. Es exactamente su función.
+```
+
+### Defecto 1 — `field_balazo` mal dimensionado
+
+Se diseñó como `string` de 255 caracteres, asumiendo que un antetítulo es
+corto. La medición del origen desmiente el supuesto:
+
+| Campo | Valores | Máximo | Pasan de 255 | Con HTML |
+|---|---:|---:|---:|---:|
+| `balazo` | 13 914 | **973** | **2 571** | **7 205** |
+| `cita` | 1 876 | 487 | 136 | **0** |
+
+```text
+Error: SQLSTATE[22001] Data too long for column 'field_balazo_value'
+```
+
+Corregido a `text_long` con formato de texto, porque más de la mitad de los
+valores contienen HTML. `field_cita` se queda en `string_long`: ninguno de sus
+1 876 valores lleva HTML y el máximo son 487 caracteres.
+
+Se añadió además una **guarda de tipo** a `tools/setup-content-model.php`, que
+aborta si un nombre de campo ya existe con otro tipo.
+
+### Defecto 2 — 740 entradas sin título
+
+```text
+Error: SQLSTATE[23000] Column 'title' cannot be null
+```
+
+Resuelto con un marcador explícito en lugar de descartar o inventar. Detalle y
+alternativas en `docs/decisiones.md` (D-22).
+
+### Defecto 3 — entidades HTML en el título
+
+No produjo un fallo, así que no habría aparecido en los conteos. Se detectó al
+**mirar** el resultado, no al contarlo:
+
+```text
+Título migrado:  "Qu&eacute; bien qu&eacute; mal"
+Debería ser:     "Qué bien qué mal"
+```
+
+```text
+CONFIRMADO: 2 948 títulos del corpus (el 8 %) traen entidades HTML.
+CONFIRMADO: 6 500 balazos también, y 6 de los 7 724 términos de etiqueta.
+```
+
+El título de un nodo es un campo de **texto plano**: Drupal lo escapa al
+renderizar, así que la entidad se vería literal en la página, en la pestaña del
+navegador y en los menús.
+
+Se decodifican las entidades en el **título** y en el **nombre de los
+términos**. No es una transformación editorial: `&eacute;` y `é` son el mismo
+carácter, uno escapado y otro no, y en texto plano conservar el escape es
+simplemente incorrecto.
+
+```text
+El CUERPO y el BALAZO no se decodifican, y es deliberado: son campos HTML,
+donde las entidades se renderizan bien y tocarlas sí alteraría contenido.
+```
+
+Verificado tras la corrección: **0 títulos con entidades** en los 60 migrados.
+
+### Conciliación de un registro, origen contra destino
+
+| | Origen (`dc8_posts` ID 46340) | Destino (Drupal) |
+|---|---|---|
+| Título | `Nuevas fachadas para Tonal&aacute;` | `Nuevas fachadas para Tonalá` |
+| Slug | `Nuevas-fachadas-para-Tonala` | `/Nuevas-fachadas-para-Tonala` |
+| Cuerpo | 2 540 caracteres | **2 540 caracteres** |
+| Sección | `Universidad` | `Universidad` |
+
+```text
+CONFIRMADO: el cuerpo pasa con la MISMA longitud exacta. No se filtró ni se
+transformó nada.
+CONFIRMADO: la URL se preserva con sus mayúsculas. pathauto no la normalizó.
+CONFIRMADO: la referencia a la sección se resolvió contra el término migrado
+en el lote 1.
+```
+
+Esa segunda línea importa más de lo que parece: `docs/url-strategy.md`
+advertía que si pathauto generara el alias desde el título, 24 260 URLs con
+mayúsculas cambiarían en silencio. El piloto demuestra que no ocurre.
+
+### Campos poblados en los 60
+
+```text
+con_wp_id       60/60    trazabilidad completa
+con_autor       60/60    todos resueltos contra credito_editorial
+con_subseccion  49/60
+con_seccion     43/60
+con_balazo      26/60
+con_etiquetas    1/60    esperado: el contenido de 1995-2005 casi no tiene
+con_cita         1/60
+alias de ruta   55/60    los 5 sin alias son las 5 entradas sin slug
+```
+
+### Lo que queda pendiente de este piloto
+
+```text
+Los 17 casos límite que docs/migration-strategy.md enumera NO se han cubierto
+todos. El piloto tomó las 60 entradas más antiguas por fecha, que cubren:
+registro vacío, fecha inválida, título ausente, slug ausente, entidades HTML,
+sección y autor genérico.
+
+FALTAN por probar explícitamente: una entrada con Elementor (de las 2 359),
+una con mojibake de puntuación, una con subsección truncada, una con slug en
+colisión, una con comentario aprobado, y una con meta description propia.
+```
+
+```text
+GATE FASE 5: NO SUPERADO TODAVÍA. Falta cubrir esos seis casos.
+```
+
+No se procede a la migración masiva hasta cubrirlos: es justo lo que el
+contrato pide y lo que acaba de demostrar su valor.

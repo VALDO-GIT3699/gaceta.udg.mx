@@ -92,14 +92,20 @@ $campos = [
 
   // --- Contenido editorial que el template no contemplaba. ---
 
+  // field_balazo es text_long y NO string, por dos razones medidas en el
+  // origen. De sus 13 914 valores, 2 571 pasan de 255 caracteres (el máximo
+  // es 973) y 7 205 contienen HTML.
+  //
+  // El primer diseño lo puso como string(255) y el piloto falló con
+  // "Data too long for column 'field_balazo_value'" en 7 de 25 registros. Es
+  // exactamente lo que el piloto de la FASE 5 existe para encontrar.
   'field_balazo' => [
     'entity_type' => 'node',
     'bundle' => 'noticia',
-    'type' => 'string',
+    'type' => 'text_long',
     'cardinality' => 1,
     'label' => 'Balazo',
-    'description' => 'Antetítulo periodístico. Procede de dc8_posts.balazo.',
-    'settings' => ['max_length' => 255],
+    'description' => 'Antetítulo periodístico. Procede de dc8_posts.balazo. Admite HTML: 7 205 de 13 914 valores lo llevan.',
   ],
   'field_cita' => [
     'entity_type' => 'node',
@@ -107,6 +113,8 @@ $campos = [
     'type' => 'string_long',
     'cardinality' => 1,
     'label' => 'Cita destacada',
+    // string_long y no text_long: de los 1 876 valores, NINGUNO contiene HTML
+    // y el máximo son 487 caracteres. No necesita formato de texto.
     'description' => 'Cita destacada del contenido. Procede de dc8_posts.cita.',
   ],
 

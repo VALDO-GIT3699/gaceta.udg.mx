@@ -1626,3 +1626,199 @@ decisión distinta y de otro responsable. Se documenta para que exista.
 PENDIENTE: ejecutar `composer audit` y pasar el listado al responsable del
 template institucional.
 ```
+
+---
+
+## D-21 — Shortcodes de WordPress en el cuerpo de los artículos
+
+```text
+DECISIÓN REQUERIDA
+Bloquea: la calidad visible de la FASE 9. No bloquea la migración en sí.
+```
+
+**Contexto.** WordPress interpreta shortcodes como `[caption]` o `[pdf]` al
+renderizar. Drupal no los conoce: si el cuerpo se migra tal cual, el lector ve
+el texto literal `[caption id="attachment_123" align="alignnone"]` en medio
+del artículo.
+
+**Datos confirmados.**
+
+```text
+[caption    3 089 entradas   8.4 % del corpus
+[pdf          962            2.6 %   (plugin PDF Embedder, activo)
+[gallery      284            0.8 %
+[embed         54
+[video         39
+[su_            4
+[audio          3
+```
+
+```text
+CERO apariciones de: [vc_, [td_, [youtube, [smartslider, [contact-form, [tab
+```
+
+Esa última línea es una buena noticia y conviene subrayarla: **no hay
+shortcodes de Visual Composer ni de tagDiv**, que habrían sido los más difíciles
+de interpretar. Los que hay son los del núcleo de WordPress más PDF Embedder.
+
+### Corrección de una cifra propia
+
+```text
+Un conteo anterior dio 35 801 entradas "con shortcode", el 97.6 % del corpus.
+Era un FALSO POSITIVO de mi propio patrón de búsqueda.
+```
+
+El patrón buscaba `[` seguido de letras minúsculas, y eso captura texto normal
+de artículos periodísticos: `[sic]`, `[...]`, `[Nota del editor]`. El conteo
+real por nombre de shortcode es el de la tabla, unas 4 400 entradas con
+solape, en torno al 12 %.
+
+**Problema.** Hay que decidir qué pasa con esas ~4 400 entradas.
+
+**Opción A — migrar tal cual.** Fidelidad absoluta. Pero el lector vería el
+texto literal del shortcode en 3 089 artículos: un defecto visible y
+antiestético en el 8.4 % del corpus.
+
+**Opción B — convertir los tres principales a HTML equivalente.**
+
+```text
+[caption id="..." align="..."]<img src="..." />Pie de foto[/caption]
+   ->  <figure><img src="..." /><figcaption>Pie de foto</figcaption></figure>
+
+[pdf ...]url[/pdf]   ->  enlace al PDF, o un campo de archivo
+[gallery ids="1,2,3"] ->  referencia a una galería de Drupal
+```
+
+**Opción C — eliminar los shortcodes dejando su contenido interno.**
+Más simple que B y evita el texto basura, pero pierde la semántica del pie de
+foto.
+
+**Riesgo.** La opción A traslada un defecto visible a 3 089 artículos
+publicados. La opción B es una transformación de contenido editorial, aunque es
+**determinista y sin pérdida**: el `<img>` interior y el texto del pie se
+preservan íntegros, y `<figure>`/`<figcaption>` es el equivalente semántico
+exacto. La opción C pierde el pie como tal.
+
+**Dependencia que condiciona todo esto.**
+
+```text
+Los tres shortcodes principales apuntan a ARCHIVOS, y los archivos no están
+(B-02 / D-15). De las 16 102 referencias de foto1, 8 501 no tienen ni ruta
+conocida (D-17).
+```
+
+Es decir: convertir `[caption]` ahora produciría un `<figure>` con un `<img>`
+cuyo archivo no existe. El resultado visible no mejora hasta la etapa 2 de
+`docs/media-strategy.md`.
+
+**Recomendación técnica neutral.** Migrar ahora con la **opción A**, fiel, y
+aplicar la **opción B como paso posterior y documentado**, junto con la etapa 2
+de media, cuando los archivos permitan comprobar el resultado. El origen
+permanece intacto y la migración es repetible, así que no se pierde nada por
+esperar; y convertir a ciegas, sin poder ver si la imagen aparece, sería
+trabajar sin verificación.
+
+Entretanto queda registrado como defecto conocido y medido: 3 089 artículos
+mostrarán el texto del shortcode.
+
+**Pregunta.** ¿Se acepta migrar fiel ahora y convertir los shortcodes junto con
+la media, o se prefiere convertirlos desde el primer momento aun sin poder
+verificar las imágenes?
+
+---
+
+## D-22 — Las 740 entradas sin título y las 6 sin fecha
+
+```text
+DECISIÓN REQUERIDA
+Bloquea: nada. La migración ya las trata de forma segura y reversible.
+```
+
+**Contexto.** El piloto de la FASE 5 falló al intentar migrar entradas cuyo
+`post_title` está vacío: Drupal no admite un nodo sin título, la columna no
+acepta NULL.
+
+**Datos confirmados.**
+
+```text
+CONFIRMADO: 740 entradas de 36 666 (el 2 %) no tienen título.
+CONFIRMADO: son EXACTAMENTE las mismas 740 que tampoco tienen slug.
+CONFIRMADO: las 740 están en estado publish.
+```
+
+Y al mirarlas de cerca son **dos poblaciones distintas**:
+
+```text
+  5 entradas COMPLETAMENTE VACÍAS
+    sin título, sin slug, sin cuerpo (0 caracteres), y con post_date
+    '0000-00-00 00:00:00'. Son cáscaras: no contienen nada.
+    IDs de origen: 28840, 28841, 30950, 36577, 42244
+
+735 entradas CON CONTENIDO REAL
+    cuerpo de 564, 968, 662 caracteres... y sólo les falta el título.
+```
+
+**Lo aplicado, que es lo seguro y reversible.**
+
+```text
+Título = "[Sin título en el origen] WP #<ID>"
+Alias  = ninguno. El nodo se sirve por /node/N.
+Cuerpo = íntegro.
+```
+
+Dos cosas que deliberadamente NO se hicieron:
+
+```text
+NO se descartó ninguna entrada. El mandato prohíbe la pérdida deliberada, y
+735 de ellas tienen contenido real.
+
+NO se derivó el título de las primeras palabras del cuerpo. Produciría
+títulos que PARECEN reales sin serlo, y elegir cómo titular una nota es una
+decisión editorial, no técnica.
+```
+
+El marcador deja el hueco visible y localizable con una consulta:
+
+```sql
+SELECT nid, title FROM node_field_data WHERE title LIKE '[Sin título%';
+```
+
+**Alternativas para resolverlo de verdad.**
+
+- **A.** Dejar el marcador y que la redacción titule las 735 que importan.
+- **B.** Derivar el título de las primeras ~70 caracteres del cuerpo, y marcar
+  esos nodos para revisión.
+- **C.** Dejar el marcador en las 735 y **descartar las 5 vacías**, que no
+  contienen nada que preservar.
+
+**Riesgo.** La opción B pone en producción 735 títulos generados por máquina
+en un medio informativo. La opción A deja 740 artículos con un marcador
+visible hasta que alguien los revise. La C exige autorización explícita para
+descartar registros, aunque estén vacíos.
+
+**Recomendación técnica neutral.** A para las 735, y C para las 5 vacías. Las
+5 no tienen título, ni slug, ni cuerpo, ni fecha: migrarlas crea cinco nodos
+que no dicen nada. El dump las conserva para siempre, así que descartarlas no
+destruye información; sólo evita basura en el sitio. Pero no se descartan sin
+que alguien lo autorice por escrito.
+
+### El problema derivado de las fechas
+
+```text
+CONFIRMADO: 6 entradas tienen post_date = '0000-00-00 00:00:00'.
+```
+
+No es una fecha válida. El origen no tiene dato, así que cualquier valor que
+se ponga es inventado. La migración usa timestamp 0, que Drupal muestra como
+**1969-12-31** en la zona horaria local.
+
+```text
+Es honesto pero se ve como un error.
+```
+
+Cinco de esas 6 son las entradas completamente vacías, así que si se aplica la
+opción C el problema casi desaparece.
+
+**Pregunta.** ¿Se acepta la recomendación (marcador en las 735, descartar las
+5 vacías con autorización)? Y si no se descartan, ¿qué fecha se les pone,
+sabiendo que cualquiera es inventada?
