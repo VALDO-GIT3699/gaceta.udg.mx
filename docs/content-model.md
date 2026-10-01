@@ -17,14 +17,22 @@ todavía.
 
 ```text
 CONFIRMADO: la estructura de tipos de contenido y campos del template Drupal.
-CONFIRMADO: las columnas personalizadas de dc8_posts (esquema del dump).
-DESCONOCIDO: cuántos registros usan cada columna y con qué valores.
+CONFIRMADO: las columnas personalizadas de dc8_posts y CUÁNTAS filas usa cada
+            una. Evidencia: reports/audit/content-counts.md
+PENDIENTE:  lo que vive en dc8_postmeta (Elementor, media, slugs históricos,
+            Yoast por contenido). Etapa 2 de D-02.
 ```
 
-Esa asimetría es importante. Se conoce el **continente** de ambos lados, pero
-no el **contenido** del lado WordPress: los conteos requieren la base de
-auditoría (B-03). Por eso este documento identifica el mapeo y los huecos,
-pero **no fija cardinalidades ni decide tipos de campo definitivos**.
+La etapa 1 de la base de auditoría ya cargó 162 957 filas de `dc8_posts`, así
+que las cifras de este documento son SQL real, no estimaciones. Lo que sigue
+pendiente es `dc8_postmeta`.
+
+```text
+Uso real de las columnas no estándar, sobre 36 666 entradas:
+  original_id  25 121     seccion     24 672     subseccion  24 673
+  term_id      16 832     foto1       16 102     balazo      13 914
+  cita          1 876
+```
 
 ## Lado origen: columnas de `dc8_posts`
 
@@ -150,16 +158,80 @@ Propuesta, sujeta a aprobación:
 | `field_seccion` | `entity_reference` → nuevo vocabulario | jerarquía editorial navegable |
 | `field_subseccion` | `entity_reference` → mismo vocabulario | jerarquía de segundo nivel |
 
+### RESUELTO con datos: NO forman jerarquía
+
+La pregunta era si `seccion`/`subseccion` debía ser un vocabulario jerárquico
+de dos niveles o dos vocabularios planos. Los datos la responden:
+
 ```text
-DECISIÓN ABIERTA: ¿seccion y subseccion como UN vocabulario jerárquico de dos
-niveles, o como DOS vocabularios independientes?
+CONFIRMADO: hay subsecciones bajo MÚLTIPLES secciones padre.
+  Crónica      7 secciones padre
+  Entrevista   7
+  Homenaje     6
+  Personaje, Exposición, Patrimonio, Conferencia, Opinión, Festival   5 cada una
+Evidencia: reports/audit/content-counts.md
 ```
 
-Un vocabulario jerárquico es más fiel a la relación real y permite que Drupal
-genere las rutas y los breadcrumbs por sí solo. Dos vocabularios son más
-simples de migrar desde columnas planas, pero pierden la relación
-padre-hijo. **No se decide aquí**: depende de si en los datos cada subsección
-pertenece siempre a una sola sección, lo que exige B-03.
+Un término de taxonomía de Drupal tiene **un solo padre**. "Crónica" no puede
+ser hija de siete secciones a la vez.
+
+```text
+RESUELTO: dos vocabularios PLANOS e independientes.
+  seccion_historica      -> field_seccion
+  subseccion_historica   -> field_subseccion
+```
+
+Preserva el dato exactamente como está, sin inventar una jerarquía que el
+origen no tiene. La relación sección-subsección sigue siendo recuperable
+porque ambos campos conviven en el mismo nodo.
+
+### Las secciones reales no son las del menú
+
+```text
+CONFIRMADO: dc8_posts.seccion contiene Miradas (5 560), Universidad (2 996),
+Buzón (1 737), Deportes (1 542), Literatura (1 342), Música (881), Teatro
+(874), Primer Plano (787), Artes visuales (764), ADN (612)...
+```
+
+Nada que ver con el menú que se observó en producción (Investigación y
+Conocimiento, Noti Red, Deporte U, Talento U, 02 Cultura...).
+
+```text
+Son DOS arquitecturas editoriales distintas que conviven: la de las columnas
+es la histórica, la del menú es la actual y vive en la taxonomía `category`
+(129 términos, 103 con padre, jerárquica).
+```
+
+Esto valida la advertencia de CLAUDE.md §46: derivar el modelo de una
+observación visual habría producido un vocabulario equivocado y habría dejado
+24 672 secciones históricas sin destino.
+
+```text
+DECISIÓN ABIERTA: cómo se reconcilian las dos arquitecturas. Conservar ambas
+(fiel pero confuso), mapear la histórica a la actual (pierde granularidad), o
+conservar la actual y la histórica sólo como metadato.
+```
+
+### Calidad de datos: truncamiento heredado a 15 caracteres
+
+```text
+CONFIRMADO: 1 066 subsecciones tienen exactamente 15 caracteres, y sólo 12
+tienen 16. Un factor de 89. No es distribución natural: es truncamiento.
+Ejemplos: "Actividades cul", "Agenda académic", "Aniversario de"
+```
+
+Coherente con `original_id`: el sistema anterior tenía un campo de 15
+caracteres. **Los caracteres perdidos no son recuperables desde este dump.**
+
+```text
+Esta pérdida NO la causa este proyecto (CLAUDE.md §47).
+```
+
+```text
+DECISIÓN ABIERTA: coexisten "Artes visuales" y "Artes Visuales". ¿Se normalizan
+las variantes de mayúsculas? Unificar modifica el dato; no unificar duplica
+términos. Es decisión editorial.
+```
 
 Las secciones observadas en producción (§46, sólo lectura) son:
 
@@ -262,13 +334,55 @@ No se pierde información: mientras no se extraigan, el crédito original
 permanece íntegro dentro del cuerpo del artículo, que es donde está hoy.
 ```
 
-#### Pendiente de investigación (requiere B-03)
+#### HALLAZGO QUE CONDICIONA D-14: post_author casi no sirve
+
+Los conteos reales revelan un problema que no se podía ver antes:
+
+```text
+CONFIRMADO: 162 usuarios, 151 con algún contenido, 142 con entradas.
+CONFIRMADO: el usuario 1, con nombre mostrado "Universidad de Guadalajara",
+            tiene 23 663 entradas: el 64.5 % del corpus.
+CONFIRMADO: el usuario 86 también se llama "Universidad de Guadalajara" (648).
+CONFIRMADO: el usuario 87 es "Gaceta UdeG" (1 747).
+Evidencia: reports/audit/content-counts.md
+```
+
+```text
+Casi dos tercios del corpus está atribuido a una cuenta genérica cuyo nombre
+es la institución, no una persona.
+```
+
+El modelo de vocabulario sigue siendo el correcto, pero `field_autor_texto`
+quedaría con el valor "Universidad de Guadalajara" en 23 663 contenidos. El
+autor real de esas notas está, con toda probabilidad, **dentro del texto del
+artículo**, que es exactamente lo que ya apuntaba la ausencia de claves de
+crédito en los metadatos.
+
+```text
+Periodistas con atribución real: Laura Sepúlveda Velázquez (2 416), Iván
+Serrano Jauregui (984), Adrián Montiel González (839), Pablo Miranda Ramírez
+(663), Mariana González Márquez (532), Wendy Aceves (472), Martha E. Mata
+Loera (469), Karina Alatorre (445)...
+Cartonistas: Trino (315), Jis (309), Falcón (137).
+```
+
+El caso de los cartonistas liga con la media diferida: su obra es gráfica.
+
+```text
+CONFIRMADO: nombres mostrados duplicados -> "Universidad de Guadalajara" en 2
+usuarios (ids 1 y 86) y "Miriam Mairena" en 2.
+```
+
+```text
+DECISIÓN ABIERTA: ¿un término o dos por cada nombre duplicado?
+```
+
+#### Pendiente de investigación (requiere la etapa 2 de D-02)
 
 ```text
 - [ ] Frecuencia de patrones "Foto:", "Fotografía:", "Texto:" en post_content
 - [ ] Contenido de post_excerpt en los adjuntos (pies de foto)
-- [ ] Cuántos de los 162 usuarios tienen contenido realmente atribuido
-- [ ] Nombres duplicados o variantes de la misma persona
+- [ ] Si el autor real de las 23 663 entradas genéricas está en el cuerpo
 ```
 
 Esa última es editorial, no técnica: si la misma persona aparece como "Juan

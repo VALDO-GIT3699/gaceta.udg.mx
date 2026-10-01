@@ -132,21 +132,54 @@ público: la integración del docroot y la purga de credenciales del historial.
   - Evidencia: `reports/audit/wordpress-inventory.md`
 - [!] Inventariar uploads - **B-02**: el directorio NO existe en la copia local
 - [ ] Determinar plugins **activos** (`dc8_options.active_plugins`) *(requiere B-03)*
-- [ ] Inventariar tipos de contenido *(requiere B-03)*
-- [ ] Inventariar estados *(requiere B-03)*
-- [ ] Inventariar autores *(requiere B-03)*
-- [ ] Inventariar taxonomías *(requiere B-03)*
-- [ ] Inventariar comentarios *(requiere B-03)*
+- [x] Inventariar tipos de contenido
+  - Evidencia: `reports/audit/content-counts.md`. 17 post_type, 162 957 filas.
+    Corpus editorial: **36 666 entradas**, 36 627 publicadas.
+- [x] Inventariar estados
+  - Evidencia: `reports/audit/content-counts.md`. 7 estados.
+- [x] Inventariar autores
+  - Evidencia: `reports/audit/content-counts.md`. 162 usuarios, 142 con
+    entradas. **El 64.5 % del corpus está en una cuenta genérica.**
+- [x] Inventariar taxonomías
+  - Evidencia: `reports/audit/content-counts.md`. 7 taxonomías;
+    `post_tag` 7 724 términos, `category` 129 jerárquicos.
+- [x] Inventariar comentarios
+  - Evidencia: `reports/audit/content-counts.md`. 6 388 totales:
+    **6 346 pendientes (spam en inglés) y sólo 40 aprobados.**
 - [ ] Inventariar postmeta *(requiere B-03)*
 - [ ] Inventariar Elementor *(requiere B-03)*
 - [ ] Inventariar SEO *(requiere B-03)*
 - [ ] Inventariar formularios *(requiere B-03)*
-- [ ] Inventariar eventos *(requiere B-03)*
-- [ ] Inventariar sliders *(requiere B-03)*
-- [ ] Inventariar configuraciones relevantes *(requiere B-03)*
+- [x] Inventariar eventos
+  - Evidencia: `reports/audit/content-counts.md`. Las cifras de §21 confirmadas
+    exactamente: 4 eventos borrador, 2 organizadores, 193 lugares publicados.
+- [x] Inventariar sliders
+  - Evidencia: `reports/audit/content-counts.md`. Slider Revolution **no está
+    activo**: sus 12 tablas son residuo. Smart Slider 3 sí está activo.
+- [x] Inventariar configuraciones relevantes
+  - Evidencia: `reports/audit/content-counts.md`. **28 plugins activos** de 38
+    en disco. `template = stylesheet = Newspaper`.
+    `permalink_structure = /%postname%/`. `blog_charset = UTF-8`.
+- [x] Determinar plugins **activos**
+  - Evidencia: `reports/audit/content-counts.md`
 
 ```text
-GATE FASE 1: NO SUPERADO
+GATE FASE 1: SUPERADO PARA EL CONTENIDO. Pendiente la media (B-02, D-15) y
+los metadatos de dc8_postmeta (etapa 2 de D-02).
+```
+
+Las cifras que CLAUDE.md §14 declaraba no confiables ya están sustituidas por
+SQL real. Hallazgos que cambian el proyecto:
+
+```text
+El corpus abarca 31 años: de 1995 a 2026, con un hueco total entre 1996 y 2004.
+48 369 adjuntos, pero NINGUNO anterior a 2019: las imágenes del contenido
+  histórico están en la columna foto1 (16 102 filas), no en el sistema de
+  adjuntos.
+Sólo 40 comentarios aprobados en toda la historia del sitio.
+1 382 slugs duplicados; 108 contenidos reclaman la misma ruta /Enfoques/.
+Truncamiento heredado a 15 caracteres en seccion y subseccion.
+seccion/subseccion NO forman jerarquía: Crónica aparece bajo 7 secciones.
 ```
 
 ## FASE 2 — Auditoría de base de datos
@@ -165,10 +198,17 @@ GATE FASE 1: NO SUPERADO
   - Reproducible con: `tools/audit-postmeta-keys.py`
 - [x] Dimensionar Elementor
   - Evidencia: `reports/audit/elementor-audit.md`
-- [ ] Todo lo demás *(requiere B-03)*
+- [x] Confirmar conteos, post types, estados, autores, taxonomías y comentarios
+  - Evidencia: `reports/audit/content-counts.md`
+  - Reproducible con: `tools/audit-queries.sql` (30 consultas de sólo lectura)
+- [x] Validar el encoding de extremo a extremo con datos reales
+  - Evidencia: `reports/audit/content-counts.md`. Con el cliente en utf8mb4 el
+    texto se lee intacto (`Buzón`, `Música`); sin él se ven interrogantes, que
+    son un artefacto del cliente y no corrupción del dato.
+- [ ] Confirmar metadatos, Elementor y Yoast por contenido *(etapa 2 de D-02)*
 
 ```text
-GATE CRÍTICO FASE 2 (encoding): SUPERADO
+GATE CRÍTICO FASE 2 (encoding): SUPERADO Y VALIDADO CON DATOS
 ```
 
 La incertidumbre sobre el encoding que CLAUDE.md §33 señalaba como bloqueante
