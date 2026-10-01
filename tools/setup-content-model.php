@@ -64,6 +64,29 @@ $vocabularios = [
     'name' => 'Crédito editorial',
     'description' => 'Personas a quienes se atribuye el contenido: autoría del texto, fotografía y otras colaboraciones. NO son cuentas de usuario: son identidades de atribución.',
   ],
+  // Vocabulario PROPIO y JERARQUICO, separado de seccion_historica.
+  //
+  // Esta era la duda pendiente de la FASE 7: si `category` y
+  // `seccion`/`subseccion` describian lo mismo. Se midio y NO:
+  //
+  //   18 052 pares articulo-category en articulos que tambien tienen seccion
+  //    4 246 (23.5 %) el nombre coincide
+  //   13 806 (76.5 %) el nombre es DISTINTO
+  //
+  // Y se reparten en el tiempo de forma complementaria: `seccion` cubre el
+  // 96.6 % del corpus anterior a 2015 y solo el 42 % del posterior, mientras
+  // `category` domina a partir de 2015. Es la estructura de la etapa
+  // WordPress, no la de la edicion impresa.
+  //
+  // FUSIONARLAS PERDERIA EL 76.5 % DE LAS CLASIFICACIONES.
+  //
+  // Tampoco se reutiliza el vocabulario `tags` del template: `tags` es plano
+  // y `category` tiene 103 de sus 129 terminos con padre. Aplanarla
+  // destruiria la jerarquia que §30 obliga a preservar.
+  'categoria_wp' => [
+    'name' => 'Categoría',
+    'description' => 'Taxonomía `category` de WordPress: la estructura de navegación de la etapa WordPress del sitio. JERÁRQUICA, 103 de 129 términos tienen padre. Distinta de la sección histórica: sólo coinciden en el 23.5 % de los casos.',
+  ],
 ];
 
 foreach ($vocabularios as $vid => $info) {
@@ -223,6 +246,31 @@ $campos = [
   ],
 
   // --- Trazabilidad de los términos de crédito. ---
+
+  // Referencia de la noticia a su categoria. Cardinalidad ilimitada porque en
+  // WordPress un contenido puede estar en varias category a la vez.
+  'field_categoria' => [
+    'entity_type' => 'node',
+    'bundle' => 'noticia',
+    'type' => 'entity_reference',
+    'cardinality' => -1,
+    'label' => 'Categoría',
+    'description' => 'Categoría de la etapa WordPress. Procede de la taxonomía `category`, vía dc8_term_relationships. La usan 29 485 de las 36 666 noticias.',
+    'target_type' => 'taxonomy_term',
+    'target_bundles' => ['categoria_wp'],
+  ],
+
+  // Trazabilidad del termino de categoria a su term_id de WordPress. Hace
+  // falta para reproducir las rutas /category/<slug>/ en la FASE 10 y para
+  // reconciliar conteos en la FASE 13 sin depender de las tablas de Migrate.
+  'field_wp_term_id' => [
+    'entity_type' => 'taxonomy_term',
+    'bundle' => 'categoria_wp',
+    'type' => 'integer',
+    'cardinality' => 1,
+    'label' => 'ID del término en WordPress',
+    'description' => 'dc8_term_taxonomy.term_id de origen.',
+  ],
 
   'field_wp_user_id' => [
     'entity_type' => 'taxonomy_term',

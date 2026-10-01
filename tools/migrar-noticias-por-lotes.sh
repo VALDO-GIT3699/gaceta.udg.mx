@@ -12,9 +12,10 @@
 # migrate:import de 36 666 registros no deja ese rastro: da una sola linea al
 # final, y si falla a mitad no se sabe donde.
 #
-# Medido: ~55 s por cada 100 registros, de los cuales ~15 s son el arranque de
-# Drupal. Con lotes de 1000 el arranque se amortiza y el total queda en unas
-# 4 horas.
+# Medido: un lote de 100 en frio tarda 55 s, pero ~15 de esos son el arranque de
+# Drupal y el resto es cache fria. En caliente son ~70 s por cada 1000, asi que
+# el corpus completo sale en unos 45 minutos. La primera estimacion de 4 horas
+# salio de extrapolar la medicion en frio: una lectura falsa.
 #
 # QUE HACE EXACTAMENTE
 #
@@ -48,6 +49,16 @@ DRUSH=(php -d extension=gd -d opcache.enable_cli=1 -d memory_limit=512M
        "$DRUPAL/vendor/drush/drush/drush.php")
 
 cd "$DRUPAL" || exit 1
+
+# Si una ejecucion anterior se corto a mitad, Migrate deja la migracion marcada
+# como "Importing" y cualquier import o rollback posterior falla con "esta
+# ocupada con otra operacion". Reponerlo es inofensivo cuando ya esta en Idle.
+#
+# LECCION APRENDIDA: al matar este script, el proceso hijo de drush NO muere
+# con el. Siguio importando varios minutos despues de detener el guion, y dejo
+# el estado bloqueado. Si hay que pararlo de verdad, matar tambien el php.exe
+# que ejecuta drush.
+"${DRUSH[@]}" migrate:reset-status gaceta_noticia >/dev/null 2>&1
 
 {
   echo "========================================================================"
