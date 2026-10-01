@@ -1289,3 +1289,139 @@ revisiones no son una dependencia de nada.
 
 **Pregunta.** ¿Alguien consulta el historial de revisiones de Gaceta en la
 práctica? Si la respuesta es no, la opción A es clara.
+
+---
+
+## D-20 — Instalación de los módulos que el contrato exige
+
+```text
+Fecha:   2026-10-01
+Estado:  RESUELTA Y APLICADA
+```
+
+**Problema.** El template institucional no traía los módulos sin los cuales es
+imposible cumplir tres requisitos del contrato:
+
+```text
+§25  imagen original -> Drupal Media -> Image Style   ->  media ausente
+§24  redirects 301 para las URLs que cambien          ->  redirect ausente
+§23  migrar los datos SEO con valor                   ->  metatag ausente
+§31  Migrate API como estrategia principal            ->  migrate* ausentes
+```
+
+`redirect` y `metatag` no estaban ni presentes en disco: había que bajarlos con
+Composer, lo que modifica `composer.json` y `composer.lock` del template.
+
+**Resolución del responsable.**
+
+```text
+"Si, instala los módulos que necesites."
+```
+
+**Lo aplicado.**
+
+```text
+De core, sólo había que ACTIVAR:  media, media_library, migrate
+Vía Composer:  migrate_plus 6.0.10, migrate_tools 6.1.4,
+               redirect 1.13.0, metatag 2.2.0
+Añadidos:      metatag_open_graph, metatag_twitter_cards
+```
+
+Un hallazgo que reduce el riesgo que yo mismo había planteado: **`media`,
+`media_library` y `migrate` son módulos del núcleo de Drupal**, así que no
+requerían Composer en absoluto. Sólo cuatro contrib necesitaban descarga.
+
+**Verificación de que Composer no rompió nada.**
+
+El riesgo real era que Composer actualizara dependencias existentes y rompiera
+un sitio que funcionaba. Se ejecutó primero en seco:
+
+```text
+CONFIRMADO: 4 instalaciones, 0 actualizaciones, 0 eliminaciones.
+CONFIRMADO: el diff de composer.lock no elimina ni reemplaza ningún paquete.
+CONFIRMADO: composer.json sólo gana 4 líneas en require.
+```
+
+**Un obstáculo que valida la decisión D-09.** Composer se negaba a resolver
+porque `drupal/core` requiere `ext-gd` y GD está deshabilitada en el `php.ini`
+global. En lugar de modificar ese `php.ini` compartido, se invocó Composer con
+la extensión cargada por proceso:
+
+```bash
+php -d extension=gd /c/ProgramData/ComposerSetup/bin/composer.phar require ...
+```
+
+Coherente con D-09: no se toca la configuración del equipo.
+
+**Incidencia durante la aplicación.** Tras activar los módulos el sitio
+devolvió **HTTP 500**, en dos fases:
+
+```text
+1) PluginNotFoundException: The "media_type" entity type does not exist.
+   -> contenedor de servicios compilado de antes de que media existiera.
+   -> drush cache:rebuild lo corrigió.
+
+2) Error: Class "\Drupal\metatag\Plugin\Field\MetatagEntityFieldItemList"
+   not found
+   -> la clase SÍ existía en disco, y en drush class_exists devolvía TRUE.
+      Fallaba sólo en la petición web.
+   -> drush cache:rebuild NO lo resolvió. Reiniciar el servidor tampoco.
+   -> se resolvió TRUNCANDO las tablas cache_* de la base de datos.
+```
+
+La segunda merece quedar escrita con detalle porque es fácil diagnosticarla
+mal, y porque yo mismo la diagnostiqué mal dos veces antes de dar con la causa:
+
+```text
+El mensaje dice que una clase no existe cuando el archivo está ahí.
+La causa real era cache_container: el contenedor de servicios compilado que
+sirve las peticiones web no incluía el namespace Drupal\metatag\ entre sus
+container.namespaces, y drush cache:rebuild no lo purgó.
+```
+
+Diagnóstico que descartó las hipótesis equivocadas:
+
+```text
+class_exists dentro de Drupal arrancado (drush php:eval):  TRUE
+El archivo en disco:                                       existe
+El namespace del archivo:                                  correcto
+La cadena del atributo list_class:                         intacta, 55 bytes
+APCu en el SAPI web:                                       no cargada
+Reinicio del proceso del servidor:                         no lo resolvió
+TRUNCATE de las 17 tablas cache_*:                         LO RESOLVIÓ
+```
+
+Truncar las tablas de caché es una operación estándar y segura: Drupal las
+regenera. No es escritura sobre internals de datos de Drupal, que es lo que
+CLAUDE.md §31 restringe.
+
+```text
+LECCIÓN OPERATIVA: tras instalar módulos en este entorno, drush cache:rebuild
+no basta. Hay que vaciar cache_container. En un despliegue real el equivalente
+es purgar la caché del contenedor y recargar PHP-FPM.
+```
+
+Efecto colateral positivo: con las cachés reconstruidas desde cero, la portada
+pasó de 5-30 segundos a **0.22 segundos** en caliente.
+
+No hubo pérdida de datos ni de configuración en ninguna de las dos.
+
+**Respaldo previo.** Antes de tocar nada se volcó la base de Drupal completa
+(23.8 MB) al directorio de trabajo de la sesión. El cambio es reversible con
+`composer remove` más `drush pm:uninstall`, y el repositorio del sitio tiene el
+commit anterior intacto.
+
+**Riesgo que queda registrado.**
+
+```text
+Composer informó de 56 avisos de seguridad que afectan a 9 paquetes del
+template, PREEXISTENTES y ajenos a esta instalación.
+```
+
+No se actuó sobre ellos: actualizar paquetes del template institucional es una
+decisión distinta y de otro responsable. Se documenta para que exista.
+
+```text
+PENDIENTE: ejecutar `composer audit` y pasar el listado al responsable del
+template institucional.
+```

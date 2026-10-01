@@ -234,7 +234,16 @@ la base de auditoría (B-03).
 - [x] Determinar si el `uploads` local está completo
   - Evidencia: `reports/audit/wordpress-inventory.md`
   - Resultado: **no existe**. No hay copia parcial: no hay copia alguna.
-- [!] Todo lo demás - **B-02**, por dependencia externa
+- [x] Construir el manifiesto de media (etapa 1 de `docs/media-strategy.md`)
+  - Evidencia: `reports/migration/media-manifest-resumen.md`
+  - Generado con: `tools/build-media-manifest.php`
+  - 48 369 adjuntos y 16 102 referencias de `foto1` inventariados con todos
+    sus metadatos y su ruta de destino calculada.
+  - Los CSV completos viven en `work/`, excluido de Git porque contienen
+    títulos y pies de foto, es decir contenido editorial, y el remoto es
+    público.
+- [!] Relacionar attachments con archivos, hashes, derivados huérfanos
+  - **B-02**: requiere los archivos. Etapa 2.
 
 ```text
 GATE FASE 3: NO SUPERADO - BLOQUEADO POR DEPENDENCIA EXTERNA
@@ -262,8 +271,15 @@ qué archivos *deberían* existir, no verificar que existan.
   - Estado: propuesta redactada con el mapeo origen-destino y 10 huecos
     identificados. **Seis decisiones de diseño no se pueden cerrar sin B-03.**
   - Evidencia: `docs/content-model.md`
-- [ ] Instalar los módulos ausentes (`migrate*`, `media`, `redirect`, `metatag`)
-  - Requiere aprobación: altera el template institucional
+- [x] Instalar los módulos ausentes
+  - Autorizado por el responsable el 2026-10-01.
+  - Evidencia: `docs/decisiones.md` (D-20)
+  - De core, sólo activar: `media`, `media_library`, `migrate`
+  - Vía Composer: `migrate_plus` 6.0.10, `migrate_tools` 6.1.4,
+    `redirect` 1.13.0, `metatag` 2.2.0
+  - Añadidos también `metatag_open_graph` y `metatag_twitter_cards`
+  - Composer fue **puramente aditivo**: 4 instalaciones, 0 actualizaciones,
+    0 eliminaciones. Ningún paquete existente del template fue alterado.
 - [ ] Diseñar SEO, redirects y comentarios
 - [ ] Revisar menús
 
@@ -288,13 +304,19 @@ autor editorial -> no existe campo
 trazabilidad WP -> no existe campo
 ```
 
-Funcionalidad exigida por el contrato sin módulo instalado:
+Funcionalidad exigida por el contrato — **RESUELTA el 2026-10-01**:
 
 ```text
-Entidades Media (§25)  -> media, media_library      AUSENTES
-Redirects 301 (§24)    -> redirect                  AUSENTE (ni en disco)
-Datos SEO (§23)        -> metatag                   AUSENTE (ni en disco)
-Migrate API (§31)      -> migrate*                  AUSENTES
+Entidades Media (§25)  -> media, media_library      INSTALADOS
+Redirects 301 (§24)    -> redirect 1.13.0           INSTALADO
+Datos SEO (§23)        -> metatag 2.2.0             INSTALADO
+Migrate API (§31)      -> migrate, migrate_plus,
+                          migrate_tools             INSTALADOS
+```
+
+```text
+CONFIRMADO: 208 tablas en la base de Drupal (antes 191).
+CONFIRMADO: tablas media (14), redirect y las de metatag creadas.
 ```
 
 ## FASES 5 a 16
@@ -308,6 +330,10 @@ Sin iniciar. No se abren mientras existan BLOCKED en fases previas.
 - [ ] FASE 9 — Migración de contenido
 - [~] FASE 10 — SEO y URLs
   - Estrategia redactada: `docs/url-strategy.md`
+  - **Mapa de URLs construido**: `reports/migration/url-map-resumen.md`,
+    generado con `tools/build-url-map.php`. 44 662 URLs inventariadas:
+    35 233 se preservan idénticas (78.9 %), 7 519 necesitan redirección 301,
+    1 147 son colisiones que exigen decisión y 763 no tienen slug en origen.
   - Hallazgo crítico: **7 811 slugs históricos** (`_wp_old_slug`) que hoy
     funcionan por redirección automática de WordPress y que nadie había
     inventariado. Sin el módulo `redirect` se perderían en silencio.

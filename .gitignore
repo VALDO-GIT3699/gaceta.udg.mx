@@ -51,6 +51,18 @@ plantilla_drupal/udg_liston/
 jquery.social.stream*
 
 # ---------------------------------------------------------------------------
+# Artefactos de trabajo con CONTENIDO EDITORIAL.
+# ---------------------------------------------------------------------------
+# work/ contiene los manifiestos y mapas generados desde la base de auditoría:
+# el manifiesto de media (títulos y pies de foto), el mapa de URLs (slugs y
+# títulos) y la matriz de trazabilidad.
+#
+# Son entregables reales del proyecto, pero llevan contenido editorial, y el
+# repositorio remoto es PÚBLICO por decisión D-06. En Git entran únicamente
+# los RESÚMENES agregados, que no contienen texto de artículos.
+work/
+
+# ---------------------------------------------------------------------------
 # Volcados de base de datos.
 # ---------------------------------------------------------------------------
 *.sql
