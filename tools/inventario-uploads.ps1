@@ -6,34 +6,39 @@
     Recorre el árbol de uploads y escribe un archivo de TEXTO con la ruta
     relativa y el tamaño de cada archivo.
 
-    NO copia, NO mueve, NO modifica y NO abre ningún archivo. Sólo lee los
-    metadatos del directorio. Es seguro ejecutarlo sobre los 82 GB.
+    NO copia, NO mueve, NO modifica y NO abre el contenido de ningún archivo.
+    Sólo lee los metadatos del directorio. Es seguro ejecutarlo sobre 82 GB.
 
     El resultado pesa unos pocos MB aunque el árbol pese 82 GB, porque sólo
     contiene nombres y tamaños. Ese archivo es lo único que hay que enviar.
 
     PARA QUÉ SIRVE
     La base de datos de WordPress referencia 48 358 archivos. Con este
-    inventario se puede determinar, sin mover un solo byte:
+    inventario se determina, sin mover un solo byte:
 
       - cuáles de esas 48 358 referencias existen de verdad
-      - cuáles faltan
+      - cuáles faltan, y con qué cobertura por año
       - dónde está cada una de las 16 102 referencias de la columna foto1,
         que sólo guardan el nombre del archivo y no su carpeta (decisión D-17)
 
-    RENDIMIENTO
-    Usa la enumeración de .NET en lugar de Get-ChildItem, que es mucho más
-    lenta en árboles de cientos de miles de archivos. Escribe de forma
-    incremental, así que el consumo de memoria es plano aunque haya millones
-    de archivos.
+    COMPATIBILIDAD
+    Funciona en Windows PowerShell 5.1, que es el que viene por defecto en
+    Windows 10 y 11.
+
+    Una versión anterior de este script usaba [System.IO.EnumerationOptions],
+    que sólo existe en .NET Core y PowerShell 7. En PowerShell 5.1 fallaba con
+    "no se encuentra el tipo". Se reescribió con Get-ChildItem, que está en
+    todas las versiones. Es algo más lento pero funciona en cualquier equipo.
+
+    La escritura es incremental con un StreamWriter, así que el consumo de
+    memoria se mantiene plano aunque haya cientos de miles de archivos.
 
 .PARAMETER Uploads
-    Carpeta raíz de uploads. Es la que contiene las carpetas por año
+    Carpeta raíz de uploads: la que contiene las carpetas por año
     (2015, 2016, ...).
 
 .PARAMETER Salida
-    Archivo de texto a generar. Por omisión, uploads-inventario.txt junto al
-    script.
+    Archivo de texto a generar. Por omisión, en el Escritorio.
 
 .EXAMPLE
     .\inventario-uploads.ps1 -Uploads "D:\gaceta\wp-content\uploads"
@@ -46,13 +51,11 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Uploads,
 
-    [string]$Salida = (Join-Path $PSScriptRoot "uploads-inventario.txt")
+    [string]$Salida = (Join-Path ([Environment]::GetFolderPath('Desktop')) 'uploads-inventario.txt')
 )
 
-$ErrorActionPreference = 'Stop'
-
 if (-not (Test-Path -LiteralPath $Uploads)) {
-    Write-Error "No existe la carpeta: $Uploads"
+    Write-Host "No existe la carpeta: $Uploads" -ForegroundColor Red
     exit 1
 }
 
@@ -61,29 +64,20 @@ $prefijo = $raiz.Length + 1
 
 Write-Host ""
 Write-Host "Inventario de uploads de Gaceta" -ForegroundColor Cyan
-Write-Host "--------------------------------"
+Write-Host "-------------------------------"
 Write-Host "Carpeta : $raiz"
 Write-Host "Salida  : $Salida"
 Write-Host ""
 Write-Host "No se copia, no se mueve y no se modifica nada." -ForegroundColor Green
-Write-Host "Sólo se leen nombres y tamanos." -ForegroundColor Green
+Write-Host "Solo se leen nombres y tamanos. Puede tardar varios minutos." -ForegroundColor Green
 Write-Host ""
 
-$opciones = [System.IO.EnumerationOptions]::new()
-$opciones.RecurseSubdirectories = $true
-# Un árbol de uploads puede tener carpetas con permisos raros o enlaces.
-# Continuar en lugar de abortar: es mejor un inventario con un aviso que
-# ningún inventario.
-$opciones.IgnoreInaccessible = $true
-$opciones.AttributesToSkip = [System.IO.FileAttributes]::ReparsePoint
-
-$escritor = [System.IO.StreamWriter]::new(
+$escritor = New-Object System.IO.StreamWriter(
     $Salida,
     $false,
-    [System.Text.UTF8Encoding]::new($false)
+    (New-Object System.Text.UTF8Encoding($false))
 )
 
-# Cabecera: deja constancia de qué se inventarió y cuándo.
 $escritor.WriteLine("# Inventario de uploads de Gaceta UDG")
 $escritor.WriteLine("# Generado: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
 $escritor.WriteLine("# Equipo: $env:COMPUTERNAME")
@@ -93,30 +87,26 @@ $escritor.WriteLine("#")
 
 $n = 0
 $bytes = 0L
-$errores = 0
 $cronometro = [System.Diagnostics.Stopwatch]::StartNew()
 
 try {
-    foreach ($ruta in [System.IO.Directory]::EnumerateFiles($raiz, '*', $opciones)) {
-        try {
-            $info = [System.IO.FileInfo]::new($ruta)
-            # Ruta relativa con barras hacia adelante, igual que las guarda
-            # WordPress en _wp_attached_file. Así se puede cruzar directamente.
-            $rel = $ruta.Substring($prefijo).Replace('\', '/')
-            $escritor.WriteLine("$rel`t$($info.Length)")
-            $n++
-            $bytes += $info.Length
-        }
-        catch {
-            $errores++
-        }
+    # -Force incluye archivos ocultos. -ErrorAction SilentlyContinue continúa
+    # si alguna carpeta tiene permisos restringidos: es mejor un inventario
+    # con un hueco que ningún inventario.
+    Get-ChildItem -LiteralPath $raiz -Recurse -File -Force -ErrorAction SilentlyContinue |
+        ForEach-Object {
+            $rel = $_.FullName.Substring($prefijo).Replace('\', '/')
+            $escritor.WriteLine($rel + "`t" + $_.Length)
+            $script:n++
+            $script:bytes += $_.Length
 
-        if (($n % 20000) -eq 0) {
-            $gb = [math]::Round($bytes / 1GB, 2)
-            Write-Host ("  {0,10:N0} archivos   {1,8} GB   {2,5}s" -f `
-                $n, $gb, [math]::Round($cronometro.Elapsed.TotalSeconds))
+            if (($script:n % 20000) -eq 0) {
+                Write-Host ("  {0,10:N0} archivos   {1,8:N2} GB   {2,5}s" -f `
+                    $script:n,
+                    ($script:bytes / 1GB),
+                    [math]::Round($cronometro.Elapsed.TotalSeconds))
+            }
         }
-    }
 }
 finally {
     $escritor.Flush()
@@ -124,15 +114,13 @@ finally {
 }
 
 $cronometro.Stop()
-$gbTotal = [math]::Round($bytes / 1GB, 2)
 $mbSalida = [math]::Round((Get-Item -LiteralPath $Salida).Length / 1MB, 2)
 
 Write-Host ""
 Write-Host "LISTO" -ForegroundColor Green
 Write-Host "-----"
 Write-Host ("Archivos inventariados : {0:N0}" -f $n)
-Write-Host ("Tamano total del arbol : {0} GB" -f $gbTotal)
-Write-Host ("Archivos no accesibles : {0}" -f $errores)
+Write-Host ("Tamano total del arbol : {0:N2} GB" -f ($bytes / 1GB))
 Write-Host ("Tiempo                 : {0}s" -f [math]::Round($cronometro.Elapsed.TotalSeconds))
 Write-Host ""
 Write-Host ("ARCHIVO A ENVIAR : {0}" -f $Salida) -ForegroundColor Yellow
@@ -142,11 +130,5 @@ Write-Host ""
 if ($mbSalida -gt 20) {
     Write-Host "Pesa mas de 20 MB. Para comprimirlo:" -ForegroundColor Cyan
     Write-Host ("  Compress-Archive -Path '{0}' -DestinationPath '{0}.zip'" -f $Salida)
-    Write-Host ""
-}
-
-if ($errores -gt 0) {
-    Write-Host ("AVISO: {0} archivos no se pudieron leer (permisos o enlaces)." -f $errores) -ForegroundColor Yellow
-    Write-Host "El inventario esta completo salvo por esos. No es un fallo del script."
     Write-Host ""
 }
