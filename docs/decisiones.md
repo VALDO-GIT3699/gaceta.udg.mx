@@ -1064,3 +1064,228 @@ informada del responsable.
 uploads de producción, aunque sea por lotes o por años? La estrategia de dos
 etapas está diseñada para admitir una entrega parcial e incremental, así que
 cualquier subconjunto que llegue es aprovechable sin rehacer nada.
+
+---
+
+## D-16 — Colisiones de slug histórico y slugs con entidades HTML roto
+
+```text
+DECISIÓN REQUERIDA
+Bloquea: FASE 10
+```
+
+**Contexto.** Hay 7 811 slugs históricos (`_wp_old_slug`) que hoy funcionan por
+el mecanismo de redirección automática de WordPress.
+
+**Datos confirmados.**
+
+```text
+CONFIRMADO: 7 811 slugs históricos sobre 7 789 contenidos, 7 626 distintos.
+CONFIRMADO: 7 769 contenidos con 1 slug, 18 con 2, 2 con 3.
+CONFIRMADO: 185 colisiones: un mismo slug reclamado por varios contenidos.
+Evidencia: reports/audit/postmeta-audit.md
+```
+
+Peores casos:
+
+```text
+carton-trino-313-copy-3              16 contenidos
+informe-actividades-sems2022-copy    14
+Informes-Red-Universitaria-2018      14
+Ruth-Padilla-Muntilde;oz              6
+La-Red-en-las-regiones                5
+```
+
+**Problema 1: las colisiones.** No se puede crear una redirección 301 desde una
+URL hacia varios destinos. Hay que elegir uno, o no redirigir.
+
+```text
+HALLAZGO: los sufijos "-copy" vienen del plugin Post Duplicator, que está
+ACTIVO. Son artefactos de duplicar entradas, no URLs editoriales.
+```
+
+Eso sugiere que buena parte de las 185 colisiones no son URLs que alguien haya
+enlazado nunca, sino basura de un flujo de trabajo interno.
+
+**Problema 2: entidades HTML roto dentro de URLs reales.**
+
+```text
+CONFIRMADO: "Ruth-Padilla-Muntilde;oz" debería ser "Ruth-Padilla-Muñoz".
+CONFIRMADO: "Ruth-Padilla-Muñoz" también existe como slug propio, con 3
+            contenidos.
+CONFIRMADO: hay más casos, como "Festin-de-los-muntilde;ecos".
+```
+
+En algún punto `&ntilde;` se escribió literalmente en el slug y perdió el `&`.
+Son URLs que **hoy existen y están indexadas**.
+
+**Opción A.** Para las colisiones, redirigir al contenido más reciente, o al
+publicado si sólo uno lo está. Para las entidades roto, preservar la URL tal
+cual **y además** crear la versión corregida: ambas resuelven.
+
+**Opción B.** Descartar las colisiones con sufijo `-copy` como artefactos y
+tratar sólo el resto, caso por caso.
+
+**Riesgo.** La opción A no pierde ninguna ruta, pero puede crear redirecciones
+hacia contenido que no es el que el visitante buscaba. La opción B exige
+demostrar que los `-copy` no están enlazados desde fuera, lo cual no se puede
+verificar sin datos de tráfico.
+
+**Recomendación técnica neutral.** Opción A para todo, con una excepción: si
+hay datos de analítica que demuestren que una URL `-copy` no ha recibido
+visitas, descartarla. Preservar de más es barato; perder una ruta indexada no
+se recupera.
+
+**Pregunta.** ¿Hay acceso a Google Analytics o Search Console del sitio? Eso
+convertiría esta decisión en un dato en lugar de un criterio. El plugin
+`google-site-kit` está activo, así que la propiedad existe.
+
+---
+
+## D-17 — Las 16 102 referencias de `foto1` no tienen ruta
+
+```text
+DECISIÓN REQUERIDA
+Bloquea: FASE 3, FASE 6. Agrava B-02 / D-15.
+```
+
+**Contexto.** `foto1` es una columna no estándar de `dc8_posts` que contiene la
+imagen principal del contenido histórico. Es la única referencia de imagen para
+buena parte del corpus anterior al sistema de adjuntos.
+
+**Datos confirmados.**
+
+```text
+CONFIRMADO: 16 102 filas con foto1; 16 065 valores distintos.
+CONFIRMADO: CERO contienen una barra "/". Son sólo el nombre del archivo.
+CONFIRMADO: 15 646 de 16 102 (97.2 %) son nombres puramente numéricos del
+            tipo 893024.jpg, heredados del sistema anterior.
+CONFIRMADO: se concentran entre 2008 y 2019, con 1 000 a 1 550 por año, más
+            16 en 1995.
+Evidencia: reports/audit/postmeta-audit.md
+```
+
+Resultado del intento de resolverlos:
+
+```text
+Vía 1 — cruzar el nombre contra las rutas de _wp_attached_file:
+  resueltos de forma única   7 527  (46.9 %)
+  ambiguos                      37
+  SIN NINGUNA COINCIDENCIA   8 501  (52.9 %)
+
+Vía 2 — buscar el nombre dentro del HTML de post_content:
+  CONFIRMADO: "893024.jpg" aparece 0 veces en todo post_content.
+  CONFIRMADO: los registros de ejemplo no contienen ninguna etiqueta <img>.
+```
+
+```text
+Para unas 8 500 imágenes, la ÚNICA información que existe es un nombre de
+archivo numérico. Ni carpeta, ni URL, ni registro de adjunto, ni referencia
+en el HTML.
+```
+
+**Problema.** Sin la carpeta, el manifiesto de media no puede calcular la ruta
+de destino de esas referencias, y la etapa 2 de `docs/media-strategy.md` no
+sabría dónde buscarlas.
+
+**Información faltante.** Dónde viven físicamente esos archivos en el árbol de
+`uploads` de producción.
+
+**Opción A — pedir a producción un listado recursivo de nombres de archivo.**
+No requiere transferir los 84 GB: sólo nombres, tamaños y rutas. Un `find` o
+un `ls -R` redirigido a un archivo de texto. Con eso se resuelve la ruta de
+cada nombre por búsqueda, y además queda un inventario para verificar el
+manifiesto completo.
+
+**Opción B — asumir una carpeta por convención.**
+Suponer, por ejemplo, que están bajo una carpeta heredada concreta.
+
+**Opción C — declarar esas 8 500 imágenes como no recuperables.**
+
+**Riesgo.** La opción B es adivinar: si la convención es falsa, el manifiesto
+queda con 8 500 rutas inventadas, que es peor que no tenerlas porque parecen
+válidas. La opción C descarta la imagen principal de buena parte del corpus
+histórico, lo que choca con el mandato de preservación.
+
+**Recomendación técnica neutral.** Opción A, y con prioridad alta. Es la
+petición más barata y de mayor rendimiento de todo el proyecto: un archivo de
+texto con el listado de `uploads` resuelve D-17 y además permite verificar las
+48 358 rutas conocidas sin mover un solo byte.
+
+**Pregunta.** ¿Se puede pedir a quien administra el servidor un listado
+recursivo de `/wp-content/uploads` (rutas, nombres y tamaños) en un archivo de
+texto? No es una copia de los archivos y no modifica producción.
+
+---
+
+## D-18 — Las 46 713 imágenes sin texto alternativo
+
+```text
+DECISIÓN REQUERIDA
+Bloquea: FASE 12
+```
+
+**Datos confirmados.**
+
+```text
+CONFIRMADO: 661 de 48 358 adjuntos tienen la clave de texto alternativo.
+CONFIRMADO: de ellos 645 tienen texto real y 16 están vacíos.
+CONFIRMADO: 46 713 imágenes sin alt. El 98.67 %.
+```
+
+**Problema.** CLAUDE.md FASE 12 pide mantener y mejorar la accesibilidad, pero
+en el origen no hay prácticamente nada que mantener en lo que más importa para
+lectores de pantalla.
+
+Las cuatro opciones y su análisis están en `docs/accessibility.md`.
+
+**Recomendación técnica neutral.** `alt=""` para la migración, con el pie de
+foto sólo donde exista y sea descriptivo, más un informe de las imágenes
+afectadas. Motivo: un `alt` incorrecto es **peor** que ninguno, porque engaña
+en lugar de omitir, y en un medio informativo una descripción inventada puede
+ser directamente falsa.
+
+**Pregunta.** ¿Se acepta esa recomendación, o la redacción quiere abordar
+editorialmente un subconjunto (por ejemplo, las imágenes de portada o las de
+los últimos dos años)?
+
+---
+
+## D-19 — Destino de las 77 307 revisiones
+
+```text
+DECISIÓN REQUERIDA
+Bloquea: FASE 9 (sólo el volumen, no la viabilidad)
+```
+
+**Datos confirmados.**
+
+```text
+CONFIRMADO: 77 307 revisiones sobre 19 400 contenidos distintos.
+CONFIRMADO: 45 424 de ellas tienen datos de Elementor, que son 1 220 MB de
+            los 1 286 MB totales de _elementor_data.
+```
+
+**Problema.** Drupal soporta revisiones, pero migrarlas multiplicaría por tres
+el número de entidades y por veinte el volumen de datos de Elementor, sin
+aportar nada al sitio público.
+
+**Opción A.** No migrar revisiones. El dump original las conserva para siempre,
+así que la información no se destruye: deja de estar en Drupal, no de existir.
+
+**Opción B.** Migrar todas.
+
+**Opción C.** Migrar sólo la última revisión de cada contenido.
+
+**Riesgo.** La opción B multiplica el tiempo de migración y el tamaño de la
+base sin beneficio visible. La opción A pierde el historial editorial *dentro
+de Drupal*, lo que importa si alguien necesita consultar cómo evolucionó una
+nota sin volver al dump.
+
+**Recomendación técnica neutral.** Opción A. El criterio de preservación se
+cumple porque el dump es la fuente de verdad y no se modifica (CLAUDE.md §7,
+§12). Si más adelante se necesita el historial, se puede migrar entonces: las
+revisiones no son una dependencia de nada.
+
+**Pregunta.** ¿Alguien consulta el historial de revisiones de Gaceta en la
+práctica? Si la respuesta es no, la opción A es clara.

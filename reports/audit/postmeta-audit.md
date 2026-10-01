@@ -247,13 +247,56 @@ Vías posibles, por orden de preferencia:
    barato y no requiere transferir los 84 GB.
 ```
 
+### Resultado: las vías 1 y 2 NO bastan
+
 ```text
-PENDIENTE: medir cuántos de los 16 102 nombres de foto1 se resuelven por la
-vía 1. Es la siguiente consulta a ejecutar.
+Vía 1 — cruzar el nombre contra las rutas de _wp_attached_file:
+  resueltos de forma única   7 527  (46.9 %)
+  ambiguos                      37
+  SIN NINGUNA COINCIDENCIA   8 501  (52.9 %)
+
+Vía 2 — buscar el nombre dentro del HTML de post_content:
+  CONFIRMADO: "893024.jpg" aparece 0 veces en todo post_content.
+  CONFIRMADO: los registros de ejemplo no contienen ninguna etiqueta <img>.
 ```
 
-La vía 3 es valiosa aunque las otras funcionen: un listado de nombres y tamaños
-permite verificar el manifiesto completo sin mover ni un archivo.
+```text
+CONFIRMADO: 15 646 de 16 102 valores de foto1 (97.2 %) son nombres puramente
+numéricos del tipo 893024.jpg, heredados del sistema anterior.
+CONFIRMADO: se concentran entre 2008 y 2019, con 1 000 a 1 550 por año.
+```
+
+```text
+Para unas 8 500 imágenes la ÚNICA información que existe es un nombre de
+archivo numérico. Ni carpeta, ni URL, ni registro de adjunto, ni referencia en
+el HTML.
+```
+
+Queda sólo la vía 3, y pasa a ser prioritaria:
+
+```text
+RECOMENDACIÓN: pedir a producción un listado recursivo de /wp-content/uploads
+(rutas, nombres y tamaños) en un archivo de texto.
+```
+
+Es la petición más barata y de mayor rendimiento del proyecto: no transfiere
+archivos, no modifica producción, resuelve D-17 y además permite verificar las
+48 358 rutas ya conocidas sin mover un solo byte. Registrado como **D-17**.
+
+### Observación colateral: el contenido antiguo usa entidades HTML
+
+En los registros de muestra de 1995 el texto aparece como
+`Tonal&aacute;`, `categor&iacute;as`, `Ren&eacute;`.
+
+```text
+CONFIRMADO: el contenido histórico almacena los acentos como entidades HTML,
+no como caracteres UTF-8.
+```
+
+No requiere acción: las entidades se renderizan igual en Drupal. Pero explica
+por qué esos registros aportan pocos bytes acentuados al análisis de encoding,
+y hay que tenerlo en cuenta en cualquier búsqueda de texto sobre el corpus
+antiguo: buscar "Tonalá" no encontrará "Tonal&aacute;".
 
 ### Accesibilidad: el dato definitivo
 
