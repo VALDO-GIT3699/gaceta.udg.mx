@@ -287,3 +287,111 @@ GATE FASE 5: NO SUPERADO TODAVÍA. Falta cubrir esos seis casos.
 
 No se procede a la migración masiva hasta cubrirlos: es justo lo que el
 contrato pide y lo que acaba de demostrar su valor.
+
+---
+
+## Lote 3 — Los seis casos límite (cierre de la FASE 5)
+
+```text
+Fecha:      2026-10-01
+Migración:  gaceta_noticia --idlist
+Alcance:    8 entradas elegidas por SQL, una por cada caso límite
+RESULTADO:  PASS en el mecanismo. Un caso revela un problema REAL.
+```
+
+### Los casos y su resultado
+
+| Caso | WP ID | Cuerpo | Alias generado | Resultado |
+|---|---:|---:|---|---|
+| Elementor | 85647 | 5 297 | `/de-memes-a-netflix-en-la-revi…` | migrado con cuerpo completo |
+| Mojibake de puntuación | 26095 | 3 623 | `/Claudio-Rafael-Vásquez-Martín…` | daño preservado tal cual |
+| Subsección truncada a 15 | 26118 | 3 461 | `/Las-voces-no-escuchadas` | truncamiento preservado |
+| **Slug en colisión** | 30278 | 2 950 | `/Enfoques` | **colisión reproducida** |
+| **Slug en colisión** | 30352 | 2 271 | `/Enfoques` | **colisión reproducida** |
+| **Slug en colisión** | 45900 | 2 817 | `/Enfoques` | **colisión reproducida** |
+| Comentario aprobado | 59353 | 3 823 | `/central-camionera-1981` | migrado |
+| Meta description propia | 159947 | 13 350 | `/que-tanto-es-tantito` | migrado |
+
+```text
+8 procesados, 8 creados, 0 fallidos, 0 ignorados.
+```
+
+### Lo que confirma cada caso
+
+**Elementor (85647).** Cuerpo de 5 297 caracteres. Refuerza la conclusión de
+`reports/audit/postmeta-audit.md`: las entradas con Elementor conservan su
+texto en `post_content` y no hay que extraerlo del JSON para migrarlas.
+
+**Mojibake (26095).** Se midieron **2 ocurrencias** del patrón dañado en el
+cuerpo migrado, las mismas que trae el origen.
+
+```text
+CONFIRMADO: la migración NO repara el mojibake. Fidelidad, como estaba
+diseñado. Repararlo sigue siendo la decisión D-11.
+```
+
+**Subsección truncada (26118).** Sección y subsección llegaron truncadas
+igual que en el origen. Se preserva el dato tal como está, sin inventar los
+caracteres perdidos.
+
+**Acentos en la URL.** El alias de 26095 es
+`/Claudio-Rafael-Vásquez-Martínez`, con acentos. Fiel al origen: no se
+transliteró.
+
+### EL HALLAZGO: la colisión de URLs se reproduce exactamente
+
+```text
+CONFIRMADO: tres nodos distintos tienen el MISMO alias /Enfoques.
+```
+
+Consulta sobre la tabla de alias:
+
+```text
+alias      | nodos
+/Enfoques  |     3
+```
+
+Drupal **no impide** alias duplicados: los crea sin error y sin aviso. Pero
+sólo uno resuelve. Los otros dos artículos quedan **inalcanzables por esa
+URL**, exactamente como ya estaban en WordPress.
+
+```text
+Extrapolación al corpus completo: 1 382 slugs duplicados, y /Enfoques solo lo
+reclaman 108 entradas. Migrar en masa crearía 1 382 alias duplicados de los
+que sólo uno por grupo resolvería.
+```
+
+```text
+Eso es una pérdida silenciosa de rutas, y CLAUDE.md §24 la prohíbe
+expresamente: "no existen pérdidas silenciosas de rutas".
+```
+
+El piloto no falló: hizo exactamente lo que se le pidió. El problema está en
+los datos de origen, y la decisión de a qué contenido apunta cada URL
+duplicada es editorial, no técnica. Es **D-16**.
+
+### Estado del gate
+
+```text
+GATE FASE 5: SUPERADO en cuanto al MECANISMO.
+             Los 17 casos previstos tienen resultado conocido.
+```
+
+```text
+LA MIGRACIÓN MASIVA SIGUE BLOQUEADA, pero por otra razón: D-16.
+```
+
+Lanzarla ahora crearía 1 382 alias duplicados. No es un fallo que los conteos
+detectarían —saldrían 36 666 de 36 666— sino una pérdida de rutas que sólo se
+ve mirando la tabla de alias. Es el mismo modo de fallo que las entidades HTML
+en el título: **correcto en los números, incorrecto en el resultado**.
+
+### Comprobación de que el contenido migrado se sirve
+
+```text
+GET /node/<nid>  ->  HTTP 301 hacia /Nuevas-fachadas-para-Tonala
+```
+
+El módulo `redirect` instalado en D-20 ya hace la redirección canónica desde la
+ruta interna hacia el alias. Es el comportamiento correcto y confirma que el
+módulo funciona antes de usarlo para las 7 519 redirecciones históricas.

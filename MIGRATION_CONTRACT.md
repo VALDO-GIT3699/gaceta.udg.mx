@@ -334,7 +334,45 @@ CONFIRMADO: tablas media (14), redirect y las de metatag creadas.
 
 Sin iniciar. No se abren mientras existan BLOCKED en fases previas.
 
-- [ ] FASE 5 — Piloto
+- [~] FASE 5 — Piloto
+  - **Ejecutado.** 60 entradas migradas con 0 fallos tras tres iteraciones.
+  - Evidencia: `reports/migration/migration-batches.md` (lote 2)
+  - Encontró tres defectos de diseño propio antes de tocar las 36 666
+    entradas: `field_balazo` mal dimensionado, 740 entradas sin título, y
+    entidades HTML en el título que no producían ningún fallo y por tanto no
+    aparecían en los conteos.
+  - Conciliación campo a campo de un registro: cuerpo con la MISMA longitud
+    exacta (2 540 caracteres), URL preservada con sus mayúsculas, referencia a
+    la sección resuelta contra el término del lote 1.
+  - Pendiente: los seis casos límite que faltan (Elementor, mojibake,
+    subsección truncada, slug en colisión, comentario aprobado, meta
+    description).
+
+  - **Los seis casos límite restantes, verificados.** 8 entradas migradas por
+    `--idlist`, 0 fallos. Evidencia: `migration-batches.md` (lote 3).
+
+```text
+GATE FASE 5: SUPERADO en cuanto al MECANISMO.
+Los 17 casos previstos tienen resultado conocido.
+```
+
+```text
+LA MIGRACIÓN MASIVA SIGUE BLOQUEADA, pero por otra razón: D-16.
+```
+
+El caso de la colisión de slug **reprodujo el problema exactamente**: tres
+nodos distintos quedaron con el mismo alias `/Enfoques`. Drupal no impide los
+alias duplicados, los crea sin error, pero sólo uno resuelve.
+
+```text
+Extrapolado al corpus: 1 382 alias duplicados, de los que sólo uno por grupo
+resolvería. Es una PÉRDIDA SILENCIOSA DE RUTAS, que CLAUDE.md §24 prohíbe.
+```
+
+No es un fallo que los conteos detectarían: saldrían 36 666 de 36 666. Es el
+mismo modo de fallo que las entidades HTML en el título, **correcto en los
+números e incorrecto en el resultado**, y por eso se verifica mirando y no
+sólo contando.
 - [ ] FASE 6 — Migración de media
 - [~] FASE 7 — Migración de taxonomías
   - **Ejecutada para secciones, subsecciones y etiquetas.** 8 825 términos
@@ -350,7 +388,11 @@ Sin iniciar. No se abren mientras existan BLOCKED en fases previas.
   - Evidencia: `reports/migration/migration-batches.md` (lote 1)
   - Pendiente: decidir qué hacer con la cuenta genérica que acumula el 64.5 %
     del corpus.
-- [ ] FASE 9 — Migración de contenido
+- [~] FASE 9 — Migración de contenido
+  - Migración `gaceta_noticia` escrita y probada en piloto.
+  - **No ejecutada en masa**: el gate de la FASE 5 lo impide.
+  - Origen: `GacetaNoticia`, que lee las siete columnas no estándar que
+    ninguna herramienta genérica de WordPress conoce.
 - [~] FASE 10 — SEO y URLs
   - Estrategia redactada: `docs/url-strategy.md`
   - **Mapa de URLs construido**: `reports/migration/url-map-resumen.md`,
