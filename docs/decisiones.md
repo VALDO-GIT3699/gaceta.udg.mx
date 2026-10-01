@@ -775,3 +775,206 @@ comparación tiene valor real.
    `smoveConf.js` del docroot son deliberados?
 3. ¿Existe licencia de la UDG para la tipografía Camber? Si no, ¿debe
    sustituirse antes de publicar el sitio?
+
+---
+
+## D-14 — Modelo de créditos editoriales: vocabulario, no cuentas de usuario
+
+```text
+Fecha:   2026-09-30
+Estado:  RESUELTA por el responsable del proyecto y su superior.
+Afecta:  FASE 4 (modelo), FASE 8 (migración de autores)
+```
+
+**Problema.** WordPress reporta 162 usuarios. CLAUDE.md §27 advierte que eso no
+implica crear 162 cuentas en Drupal, pero no fijaba el mecanismo alternativo.
+`docs/content-model.md` dejaba la pregunta abierta con tres alternativas.
+
+**Resolución.**
+
+```text
+NO se crean cuentas de usuario en Drupal para los autores de WordPress.
+Los créditos se modelan como TÉRMINOS DE UN VOCABULARIO asociados al contenido.
+Deben admitir combinaciones de: autoría del texto, fotografía y otros
+colaboradores.
+```
+
+**Razón que dio el responsable.** Las cuentas de WordPress existen únicamente
+para poder asignar el crédito de los artículos. **Las personas nunca inician
+sesión con esas cuentas.** Son identidades de atribución, no de acceso.
+
+**Por qué es la decisión correcta técnicamente.** Coincide con lo que el
+contrato ya pedía y lo refuerza:
+
+1. **Seguridad.** 162 cuentas que nadie usa son 162 superficies de
+   autenticación, con sus contraseñas, sus sesiones y sus permisos. No
+   crearlas elimina ese riesgo de raíz. CLAUDE.md §27 pide expresamente *"no
+   importar contraseñas ni secretos innecesariamente"*, y §37 prohíbe
+   versionar hashes. Sin cuentas, nada de eso entra al proyecto.
+2. **Fidelidad al dato.** Un usuario de Drupal modela *quién puede entrar*. Un
+   término de taxonomía modela *a quién se atribuye algo*. La segunda es la
+   semántica real del dato.
+3. **Expresividad.** WordPress sólo admite **un** `post_author` por entrada.
+   Un vocabulario con varios campos de referencia permite acreditar texto,
+   fotografía y colaboraciones por separado, y a varias personas en cada rol.
+   El modelo destino es **más rico** que el de origen, no más pobre.
+
+### Diseño propuesto
+
+Un **único vocabulario** de personas, con **tres campos** de referencia en el
+contenido:
+
+```text
+Vocabulario:  credito_editorial     (términos = personas)
+
+Campos en el tipo de contenido noticia, todos de valor múltiple:
+  field_autor_texto     entity_reference -> credito_editorial   "Autoría del texto"
+  field_fotografia      entity_reference -> credito_editorial   "Fotografía"
+  field_colaboradores   entity_reference -> credito_editorial   "Otros créditos"
+```
+
+**Por qué un solo vocabulario y no uno por rol.** La misma persona puede firmar
+el texto de una nota y la fotografía de otra. Con un vocabulario único existe
+**un término canónico por persona**, lo que evita duplicados, permite una
+página de autor que reúna todo su trabajo, y hace posible preguntar "qué ha
+publicado esta persona, en cualquier rol". Con tres vocabularios, la misma
+persona sería tres términos sin relación entre sí.
+
+**Alternativa evaluada y descartada por ahora.** Un vocabulario de roles más
+entidades Paragraph que emparejen persona y rol. Es más flexible si los roles
+se multiplican o importa su orden, pero añade el módulo Paragraphs y bastante
+complejidad. Con tres roles concretos y definidos, tres campos son más simples
+y más fáciles de auditar. Si en el futuro aparecen muchos roles, ésa es la vía
+de escape.
+
+### Campos de trazabilidad en el término
+
+Para cumplir CLAUDE.md §35 (poder responder dónde terminó cada registro):
+
+```text
+field_wp_user_id     integer   dc8_users.ID de origen
+field_wp_user_login  string    login de origen
+```
+
+```text
+NO se migra: contraseñas, hashes, claves de activación, ni direcciones de
+correo electrónico.
+```
+
+El correo es dato personal y no aporta nada a la atribución editorial. Si
+alguna vez se necesitara, se decide entonces y con base legal.
+
+### Lo que esta decisión NO resuelve todavía
+
+Hay un hueco de datos que conviene no disimular:
+
+```text
+CONFIRMADO:  dc8_posts.post_author existe y es un id numérico de usuario.
+             De ahí sale field_autor_texto. Migración directa y fiable.
+DESCONOCIDO: de dónde salen los créditos de FOTOGRAFÍA y de OTROS
+             COLABORADORES en el origen.
+```
+
+WordPress no tiene un campo estructurado para el fotógrafo. Las posibilidades
+son: una clave en `dc8_postmeta`, el texto del propio artículo (patrones del
+tipo "Foto:", "Fotografía:", "Texto y fotos:"), o el pie de la imagen.
+
+```text
+El modelo queda PREPARADO para recibir esos créditos. Que se puedan EXTRAER
+del origen es otra cuestión, y está sin verificar.
+```
+
+Si resultara que sólo están dentro del cuerpo del texto, extraerlos exige
+reconocer patrones en prosa, lo cual es inherentemente inexacto y sería una
+transformación de contenido editorial. Eso requeriría su propia decisión, con
+muestras reales y una tasa de error medida. **No se hará por iniciativa
+propia.** Mientras no se resuelva, los dos campos quedan vacíos y el crédito
+original permanece íntegro dentro del cuerpo del artículo, que es donde está
+hoy: no se pierde información.
+
+**Pendiente de investigación (requiere B-03).**
+
+```text
+- [ ] Claves de dc8_postmeta que puedan contener créditos de fotografía
+- [ ] Frecuencia de patrones "Foto:", "Fotografía:", "Texto:" en post_content
+- [ ] Cuántos de los 162 usuarios tienen contenido realmente atribuido
+- [ ] Si hay nombres de autor duplicados o variantes del mismo nombre
+```
+
+Esa última es importante: si la misma persona aparece como "Juan Pérez" y
+"Juan Pérez Gómez", unificarla o no es una decisión editorial, no técnica.
+
+---
+
+## D-15 — Migración sin los archivos de media: B-02 se acepta como dependencia externa
+
+```text
+Fecha:   2026-09-30
+Estado:  RESUELTA por el responsable del proyecto.
+Afecta:  B-02, FASE 3, FASE 6
+```
+
+**Problema.** `wp-content/uploads` no existe en la copia local. Producción
+reporta ~84.23 GB. B-02 bloqueaba las FASES 3 y 6.
+
+**Resolución del responsable.**
+
+```text
+Los archivos no se copiaron por falta de espacio en la máquina.
+El trabajo continúa SIN las imágenes.
+Condición expresa: se tiene que salvar TODA la información.
+```
+
+**Cómo se cumplen las dos cosas a la vez.** La aparente contradicción entre
+"sin imágenes" y "sin perder información" se resuelve distinguiendo dos cosas
+que suelen confundirse:
+
+```text
+Los ARCHIVOS binarios  -> están en producción. No los tenemos.
+La INFORMACIÓN sobre ellos -> está en la base de datos. Sí la tenemos.
+```
+
+Todo lo que *se sabe* de cada imagen vive en el dump, no en el archivo: el
+nombre, la ruta, la URL original, el tipo, las dimensiones, el texto
+alternativo, el pie de foto, el título, la descripción, la fecha, el autor del
+adjunto y **qué contenidos la referencian**.
+
+```text
+Por tanto: no migrar los binarios NO implica perder información, siempre que
+se preserve íntegra cada referencia y cada metadato.
+```
+
+Lo que sí implica es que **la migración de media no puede declararse
+completa**, y eso se mantiene: CLAUDE.md §33 y §48 lo exigen.
+
+### Estrategia adoptada: dos etapas
+
+```text
+ETAPA 1 (ahora, sin archivos)
+  Inventario completo de referencias de media desde la base de datos.
+  Metadatos íntegros. Rutas de destino calculadas de forma determinista.
+  Las referencias en el HTML del contenido se preservan y se reescriben a la
+  ruta final que tendrá el archivo en Drupal.
+
+ETAPA 2 (cuando haya acceso a los archivos)
+  Se depositan los binarios en la ruta ya calculada y se crean las entidades
+  Media que los envuelven. No hay que repetir la migración de contenido.
+```
+
+El detalle está en `docs/media-strategy.md`.
+
+**Consecuencia asumida.** Hasta la etapa 2, el sitio Drupal mostrará las
+imágenes roto o, si se opta por el puente que describe la estrategia de media,
+servidas todavía desde el dominio de producción. Ninguna de las dos es un
+estado final aceptable, y ambas quedan registradas como deuda explícita.
+
+```text
+B-02 deja de ser un BLOCKED del proyecto y pasa a ser una DEPENDENCIA EXTERNA
+ACEPTADA, con la migración de media declarada INCOMPLETA por decisión
+informada del responsable.
+```
+
+**Pregunta que sigue abierta.** ¿Existirá en algún momento acceso al árbol de
+uploads de producción, aunque sea por lotes o por años? La estrategia de dos
+etapas está diseñada para admitir una entrega parcial e incremental, así que
+cualquier subconjunto que llegue es aprovechable sin rehacer nada.

@@ -5,9 +5,11 @@ hecha en otro lugar.
 
 - Última actualización: **2026-09-30**
 - Fase actual: **FASE 1 y FASE 4 en progreso**; FASE 0 cerrada con observaciones
-- BLOCKED abiertos: **3** (B-02 media, B-03 base de auditoría, B-04 accesibilidad)
+- BLOCKED abiertos: **2** (B-03 base de auditoría, B-04 accesibilidad)
 - BLOCKED resueltos: **1** (B-01 encoding, para la estrategia de importación)
+- Dependencias externas aceptadas: **1** (B-02 media, por decisión D-15)
 - Decisiones abiertas: **9** (D-02, D-03, D-04, D-05, D-08, D-10, D-11, D-12, D-13)
+- Decisiones resueltas por el responsable: **D-14** créditos, **D-15** media
 - Último dictamen del auditor: **NO AUTORIZADO** (2026-09-30). Hallazgos
   atendidos en esta revisión; requiere nuevo dictamen.
 
@@ -155,6 +157,14 @@ GATE FASE 1: NO SUPERADO
 - [x] Confirmar encoding real de `dc8_posts` - **B-01 RESUELTO**
   - Evidencia: `reports/audit/encoding-audit.md`
   - Reproducible con: `tools/audit-encoding.py`
+- [x] Medir el tamaño de cada tabla dentro del dump
+  - Evidencia: `reports/audit/postmeta-keys.md`
+  - Reproducible con: `tools/audit-table-sizes.py`
+- [x] Inventariar las claves de `dc8_postmeta`
+  - Evidencia: `reports/audit/postmeta-keys.md`
+  - Reproducible con: `tools/audit-postmeta-keys.py`
+- [x] Dimensionar Elementor
+  - Evidencia: `reports/audit/elementor-audit.md`
 - [ ] Todo lo demás *(requiere B-03)*
 
 ```text
@@ -248,7 +258,15 @@ Sin iniciar. No se abren mientras existan BLOCKED en fases previas.
 - [ ] FASE 7 — Migración de taxonomías
 - [ ] FASE 8 — Migración de autores
 - [ ] FASE 9 — Migración de contenido
-- [ ] FASE 10 — SEO y URLs
+- [~] FASE 10 — SEO y URLs
+  - Estrategia redactada: `docs/url-strategy.md`
+  - Hallazgo crítico: **7 811 slugs históricos** (`_wp_old_slug`) que hoy
+    funcionan por redirección automática de WordPress y que nadie había
+    inventariado. Sin el módulo `redirect` se perderían en silencio.
+  - Hallazgo que reduce alcance: el SEO por contenido es mínimo. Sólo 2
+    títulos propios y 910 meta descriptions. Cero canonical, Open Graph o
+    Twitter Cards propios. La mayoría se genera por plantillas de Yoast en
+    `dc8_options`.
 - [ ] FASE 11 — Reconstrucción visual
 - [ ] FASE 12 — Accesibilidad
 - [ ] FASE 13 — Validación automática
@@ -358,12 +376,55 @@ CONFIRMADO: portada HTTP 200, 67 368 bytes (antes 67 288).
 `udg_media` **no** se restauró: sus scripts llevan API keys de terceros
 embebidas y restaurarla los activaría. Es la decisión **D-12**.
 
-### B-02 - Ausencia total de `/wp-content/uploads`
+### B-02 - Ausencia de `/wp-content/uploads` - DEPENDENCIA EXTERNA ACEPTADA
 
 ```text
 FASE:      3, 6
-ESTADO:    BLOCKED - AGRAVADO
-EVIDENCIA: reports/audit/wordpress-inventory.md
+ESTADO:    RECLASIFICADO por decisión D-15 del responsable (2026-09-30)
+EVIDENCIA: reports/audit/wordpress-inventory.md, docs/media-strategy.md
+```
+
+```text
+El responsable confirma que no copió los archivos por falta de espacio en su
+máquina, y decide continuar sin ellos, con la condición expresa de que se
+salve TODA la información.
+```
+
+Ambas cosas son compatibles, y en eso se basa `docs/media-strategy.md`:
+
+```text
+Los ARCHIVOS binarios      -> están en producción. No los tenemos.
+La INFORMACIÓN sobre ellos -> está en el dump. Sí la tenemos, íntegra.
+```
+
+Todo lo que se sabe de cada imagen (nombre, ruta, URL, MIME, dimensiones,
+derivados, texto alternativo, pie de foto, y qué contenidos la usan) vive en la
+base de datos, no en el JPEG. Preservar cada referencia y cada metadato
+satisface la condición de no perder información.
+
+Estrategia adoptada: **dos etapas**. Ahora, el manifiesto completo de media con
+rutas de destino calculadas. Después, cuando haya archivos, se depositan en esa
+ruta sin repetir la migración de contenido. Admite entrega parcial e
+incremental.
+
+```text
+B-02 deja de bloquear el proyecto, pero la migración de media queda declarada
+INCOMPLETA mientras no exista la etapa 2. CLAUDE.md §33 y §48 se mantienen:
+la FASE 6 no podrá marcarse [x] y el criterio de aceptación de media queda
+abierto.
+```
+
+Dimensionado por la auditoría del dump:
+
+```text
+HIPÓTESIS: del orden de 48 358 archivos adjuntos originales.
+CONFIRMADO: sólo 661 tienen texto alternativo. El 98.6 % no tiene alt.
+```
+
+### B-02-bis - Las cifras anteriores del bloqueo (histórico)
+
+```text
+ESTADO HISTÓRICO: BLOCKED - AGRAVADO
 ```
 
 CLAUDE.md §25 describía la copia local como parcial. **La realidad es peor:**
@@ -429,7 +490,13 @@ Formato completo en `docs/decisiones.md`.
    dañaría el 98.4 % del contenido que está correcto.
 2. **Media ausente (B-02).** Agravado: no existe ninguna copia de los archivos.
    Las FASES 3 y 6 están bloqueadas por dependencia externa.
-3. **Elementor (D-03).** `post_content` puede no contener el contenido visible.
+3. **Elementor (D-03): el mayor riesgo técnico del proyecto, ya dimensionado.**
+   `_elementor_data` aparece ~47 896 veces, y se estima que ocupa la mayor
+   parte de los 2.3 GB de `dc8_postmeta`, es decir más de la mitad de todo el
+   dump. Si `post_content` está vacío en esos contenidos, migrarlo sin extraer
+   el JSON produciría hasta 47 900 contenidos vacíos **con los conteos
+   saliendo correctos**: un éxito aparente, el peor modo de fallo posible.
+   Evidencia: `reports/audit/elementor-audit.md`.
 3b. **Fiabilidad de la propia documentación.** El auditor halló tres
    afirmaciones verificables de este proyecto que eran falsas: «no se modificó
    udg_liston», «0 credenciales en el índice» y «los mecanismos de
@@ -462,3 +529,15 @@ Formato completo en `docs/decisiones.md`.
 9. **SSO institucional.** `wp-content/mu-plugins/sso.php` implica autenticación
    federada. No hay equivalente instalado en el template y el roadmap no lo
    contempla.
+10. **7 811 URLs históricas sin inventariar hasta hoy.** El mecanismo de
+   `_wp_old_slug` de WordPress es silencioso: no aparece en ninguna pantalla de
+   administración. Hace **obligatorio** el módulo `redirect`, que no está
+   instalado ni presente en disco.
+11. **El 98.6 % de las imágenes no tiene texto alternativo.** Sólo 661 de
+   ~48 358 adjuntos. La FASE 12 no puede "preservar" una accesibilidad que no
+   existe en el origen: hay que decidir si se genera, se deja vacío o se marca
+   para revisión editorial.
+12. **Los créditos de fotografía no tienen fuente de datos.** D-14 fija el
+   modelo, pero el dump no contiene ninguna clave de crédito en `postmeta`.
+   Extraerlos del cuerpo del texto sería una transformación de contenido
+   editorial y exige su propia decisión.

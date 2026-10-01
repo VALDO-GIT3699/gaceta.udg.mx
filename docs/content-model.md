@@ -123,7 +123,9 @@ autoriza, y dejar los nombres de máquina intactos.
 | **Cita destacada** | `cita` | — | **FALTA** |
 | **Sección** | `seccion` | — | **FALTA** |
 | **Subsección** | `subseccion` | — | **FALTA** |
-| **Autor editorial** | `post_author` | — | **FALTA** |
+| **Autoría del texto** | `post_author` | — | **FALTA** (D-14: vocabulario) |
+| **Fotografía** | sin campo en origen | — | **FALTA** y sin fuente de datos |
+| **Otros créditos** | sin campo en origen | — | **FALTA** y sin fuente de datos |
 | **Trazabilidad WP** | `ID`, `original_id` | — | **FALTA** |
 | **SEO (título, meta, OG)** | Yoast | — | **FALTA: módulo ausente** |
 | **Redirects 301** | URLs históricas | — | **FALTA: módulo ausente** |
@@ -174,28 +176,103 @@ CLAUDE.md §46 lo prohíbe expresamente: no se convierte una observación visual
 en decisión de modelo de datos. El vocabulario debe construirse desde
 `dc8_posts.seccion` y `dc8_terms`, no desde el menú del sitio.
 
-### Autor editorial
-
-CLAUDE.md §27 es claro: 162 usuarios de WordPress **no** se traducen en 162
-cuentas de Drupal. Hay que separar la cuenta técnica del crédito editorial.
-
-Propuesta:
+### Créditos editoriales — RESUELTO (D-14)
 
 ```text
-field_autor_editorial (string)  -> nombre del autor tal como debe mostrarse
-uid del nodo                    -> cuenta técnica, o usuario de migración
+DECISIÓN TOMADA por el responsable del proyecto y su superior.
 ```
-
-Guardar el nombre como campo preserva la atribución histórica sin crear
-cuentas activas para personas que ya no participan. Si más adelante se decide
-crear un vocabulario de autores o entidades de autor, el campo de texto es
-convertible; el camino inverso no lo es.
 
 ```text
-DECISIÓN ABIERTA: ¿campo de texto, vocabulario de autores, o cuentas reales?
-Depende de cuántos autores distintos haya y de si necesitan página propia.
-Requiere B-03.
+NO se crean cuentas de usuario en Drupal para los autores de WordPress.
+Los créditos se modelan como TÉRMINOS DE UN VOCABULARIO.
+Deben admitir combinaciones de autoría de texto, fotografía y otros
+colaboradores.
 ```
+
+Razón de fondo: las cuentas de WordPress existen sólo para asignar el crédito
+de los artículos. **Nadie inicia sesión con ellas.** Son identidades de
+atribución, no de acceso. Modelarlas como usuarios de Drupal crearía 162
+superficies de autenticación que nadie usaría.
+
+#### Diseño
+
+Un **único vocabulario** de personas, con **tres campos** de referencia:
+
+```text
+Vocabulario:  credito_editorial          (términos = personas)
+
+Campos nuevos en noticia, todos de valor MÚLTIPLE:
+  field_autor_texto    entity_reference -> credito_editorial  "Autoría del texto"
+  field_fotografia     entity_reference -> credito_editorial  "Fotografía"
+  field_colaboradores  entity_reference -> credito_editorial  "Otros créditos"
+
+Campos de trazabilidad en el término:
+  field_wp_user_id     integer   dc8_users.ID de origen
+  field_wp_user_login  string    login de origen
+```
+
+**Un vocabulario, no tres.** La misma persona puede firmar el texto de una nota
+y la fotografía de otra. Con un vocabulario único hay **un término canónico por
+persona**: no hay duplicados, una página de autor reúne todo su trabajo, y se
+puede preguntar "qué ha publicado esta persona, en cualquier rol". Con tres
+vocabularios sería tres términos sin relación entre sí.
+
+**Lo que NO se migra:** contraseñas, hashes, claves de activación ni
+direcciones de correo. El correo es dato personal y no aporta nada a la
+atribución (CLAUDE.md §27, §37).
+
+**Alternativa evaluada.** Un vocabulario de roles más entidades Paragraph que
+emparejen persona y rol. Más flexible si los roles se multiplican o importa su
+orden, pero añade el módulo Paragraphs y complejidad. Con tres roles concretos,
+tres campos son más simples y auditables. Queda como vía de escape.
+
+#### HALLAZGO: los créditos de fotografía NO están en postmeta
+
+El modelo queda preparado para los tres roles. Pero la auditoría del dump
+revela un problema de **origen de datos**:
+
+```text
+CONFIRMADO: dc8_posts.post_author existe y es un id numérico.
+            De ahí sale field_autor_texto. Migración directa y fiable.
+
+CONFIRMADO: NINGUNA de estas claves aparece en el dump:
+            _credito, _autor, _fotografo, _fotografia, _colaborador,
+            autor, fotografo, credito
+            Evidencia: reports/audit/postmeta-keys.md
+```
+
+Es decir: **no existe ningún campo estructurado con el crédito del fotógrafo**.
+Las posibilidades que quedan son el texto del propio artículo (patrones del
+tipo "Foto:", "Fotografía:", "Texto y fotos:") o el pie de la imagen
+(`post_excerpt` del adjunto).
+
+```text
+CONSECUENCIA: field_fotografia y field_colaboradores se crean, pero se
+quedarán VACÍOS salvo que se autorice extraer los créditos del cuerpo del
+texto.
+```
+
+Extraerlos exigiría reconocer patrones en prosa, lo cual es inherentemente
+inexacto y constituye una transformación de contenido editorial. **No se hará
+por iniciativa propia.** Requeriría su propia decisión, con muestras reales y
+una tasa de error medida.
+
+```text
+No se pierde información: mientras no se extraigan, el crédito original
+permanece íntegro dentro del cuerpo del artículo, que es donde está hoy.
+```
+
+#### Pendiente de investigación (requiere B-03)
+
+```text
+- [ ] Frecuencia de patrones "Foto:", "Fotografía:", "Texto:" en post_content
+- [ ] Contenido de post_excerpt en los adjuntos (pies de foto)
+- [ ] Cuántos de los 162 usuarios tienen contenido realmente atribuido
+- [ ] Nombres duplicados o variantes de la misma persona
+```
+
+Esa última es editorial, no técnica: si la misma persona aparece como "Juan
+Pérez" y "Juan Pérez Gómez", unificarla o no lo decide la redacción.
 
 ### Trazabilidad
 
@@ -335,17 +412,20 @@ adecuado para `dc8_tec_events` y `dc8_tec_occurrences`.
 ## Lo que este documento no decide
 
 ```text
-Cardinalidad de cada campo (uno o varios valores).
+Cardinalidad de los campos que no son de crédito.
 Si seccion/subseccion es un vocabulario jerárquico o dos vocabularios.
-Si el autor editorial es texto, vocabulario o cuenta.
 Qué hacer con los 193 lugares.
 Si dc8_posts.term_id o dc8_term_relationships es la fuente de verdad.
 Cómo se extrae el contenido de Elementor (D-03).
+Si se autoriza extraer créditos de fotografía del cuerpo del texto.
 ```
 
-Las seis dependen de datos que sólo la base de auditoría puede dar. Fijarlas
-ahora sería convertir incertidumbre en decisión, que es exactamente lo que el
-mandato prohíbe.
+Dependen de datos que sólo la base de auditoría puede dar. Fijarlas ahora sería
+convertir incertidumbre en decisión, que es exactamente lo que el mandato
+prohíbe.
+
+El modelo de créditos **ya no está en esta lista**: lo resolvió el responsable
+en D-14.
 
 ## Gate de la FASE 4
 
