@@ -273,3 +273,92 @@ decisión informada del responsable.
 
 El manifiesto de la etapa 1 convierte la primera línea en una petición
 concreta: una lista de archivos, no "los 84 GB".
+
+
+---
+
+## Cómo se mueven los 82 GB (actualización 2026-10-01)
+
+El responsable informa de que ha recibido **datos parciales de uploads, 82 GB**,
+descargados en el equipo de su trabajo, y pregunta qué hacer con ellos.
+
+```text
+Los 82 GB NO tienen que pasar por el equipo de desarrollo ni por el
+repositorio. Nunca.
+```
+
+### El modelo, en dos fases
+
+```text
+FASE A — AHORA. Sólo viaja un listado de texto.
+
+  equipo del trabajo
+      |  tools/inventario-uploads.ps1
+      |  (no copia, no mueve, no abre archivos: lee nombres y tamanos)
+      v
+  uploads-inventario.txt        unos pocos MB
+      |
+      v
+  equipo de desarrollo
+      |  tools/cruzar-inventario-uploads.php
+      v
+  cobertura: qué existe, qué falta, y dónde está cada foto1
+```
+
+```text
+FASE B — AL DESPLEGAR. Los archivos se copian UNA vez, directo.
+
+  equipo del trabajo  ----------->  servidor de Drupal
+       (82 GB)                      sites/default/files/migrado/
+
+  Sin pasar por el equipo de desarrollo. Sin renombrar nada. Preservando la
+  estructura de carpetas por año tal como está.
+```
+
+### Por qué no hay que tocar las fotos
+
+Ésta era la duda de fondo del responsable, y la respuesta es que **no hay que
+reorganizar nada**.
+
+Las rutas de destino del manifiesto se calcularon de forma determinista a
+partir de la ruta de origen:
+
+```text
+_wp_attached_file:      2015/06/foto.jpg
+ruta de destino:        public://migrado/2015/06/foto.jpg
+se sirve desde:         sites/default/files/migrado/2015/06/foto.jpg
+```
+
+```text
+Copiar el árbol tal cual, una vez, al directorio de archivos de Drupal es
+TODO lo que hay que hacer. Las referencias ya apuntan ahí.
+```
+
+Y el contenido migrado no depende de que eso ocurra para existir: las 36 666
+noticias se migran igual, con sus referencias ya escritas. Cuando los archivos
+aparezcan en esa ruta, las imágenes simplemente empiezan a verse.
+
+### Que sean parciales no es un problema
+
+```text
+El inventario dirá exactamente cuáles de las 48 358 referencias están
+cubiertas y cuáles no, con cobertura desglosada por carpeta y por año.
+```
+
+Eso convierte "nos faltan fotos" en una lista concreta: se puede pedir
+únicamente los años que falten, en lugar de volver a mover 82 GB.
+
+### Lo que el inventario resuelve de D-17
+
+De las 16 102 referencias de `foto1`, 8 501 no tenían ruta conocida porque la
+columna sólo guarda el nombre del archivo. Con el inventario se buscan esos
+nombres en el árbol real:
+
+```text
+nombre único en el árbol  ->  RESUELTA, ruta conocida
+nombre en varias carpetas ->  AMBIGUA, se desempata por el año del contenido
+nombre que no aparece     ->  NO ESTÁ, y queda documentado
+```
+
+El desempate por año es fiable porque WordPress organiza los uploads por año y
+mes, y la fecha del contenido es conocida.
