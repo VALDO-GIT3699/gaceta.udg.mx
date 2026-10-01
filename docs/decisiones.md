@@ -1913,3 +1913,143 @@ dump los conserva. Si se quiere constancia formal, se puede exportar la lista a
 
 **Pregunta.** ¿Se añade el campo de comentarios en modo cerrado para preservar
 los 40 reales? ¿Y se confirma que los 6 346 de spam no se migran?
+
+---
+
+## D-24 — Colisiones de slug: 347 rutas con varios artículos
+
+```text
+RESUELTA EN SU DIAGNÓSTICO E IMPLEMENTADA DE FORMA PROVISIONAL
+Fecha: 2026-10-01
+Desbloquea: FASE 9 (migración masiva de las 36 666 noticias)
+Evidencia: reports/audit/url-collisions.md
+```
+
+**Contexto.** Drupal **no impone unicidad** en `path_alias`. Acepta dos alias
+idénticos sin protestar y después resuelve sólo uno. El piloto lo reprodujo:
+`/Enfoques` apuntaba a `/node/260`, `/node/264` y `/node/265` a la vez.
+
+**Problema.** Es el modo de fallo que §24 prohíbe y que ningún conteo detecta.
+La migración habría terminado con `failed_count = 0` y 36 666 de 36 666
+mientras cientos de artículos quedaban sin ruta accesible.
+
+**Datos confirmados.**
+
+```text
+CONFIRMADO: 347 slugs repetidos entre post_type = 'post'; 971 registros, los
+            971 publicados; 624 perdedores.
+CONFIRMADO: page NO tiene ninguna colision. 170 slugs para 170 registros.
+CORRECCION: la cifra de 1 382 que yo venia citando era falsa. Contaba todos
+            los post_type, y 7 668 de esos grupos son REVISIONES, que no se
+            migran como contenido.
+```
+
+Verificado contra producción en modo observación (§46), cuatro peticiones GET:
+
+```text
+CONFIRMADO: /Enfoques/ sirve UN articulo, el del 2016-06-06 (ID 45900).
+CONFIRMADO: ?p=30278 y ?p=30352 sirven TAMBIEN ese del 2016, no el suyo.
+            WordPress redirige ?p=ID al permalink y ahi gana el mismo.
+CONTROL:    ?p=29139, con slug unico, sirve su articulo correcto de 2008.
+```
+
+```text
+POR TANTO: los 624 perdedores NO tienen hoy ninguna URL que funcione. Ni la
+bonita, ni la de ?p=ID.
+```
+
+**Esto invierte el diagnóstico.** Yo lo había declarado un riesgo crítico de
+pérdida de 624 rutas vivas. No lo es: WordPress ya las perdió. Drupal las
+recupera.
+
+**Alternativas para los 624 perdedores.**
+
+- **Opción A — `/slug-<wp_id>`.** Determinista: se deduce del dato, no del
+  orden de proceso. Trazable al origen. Verificado: 624 perdedores producen
+  624 alias distintos y **cero** choques contra los 35 461 slugs reales.
+- **Opción B — `/slug-2`, `/slug-3`.** Más legible, pero el número depende del
+  orden en que se procesen las filas. Si la migración se reejecuta por lotes
+  distintos, el mismo artículo cambia de URL. Rompe §31.
+- **Opción C — dejarlos sin alias, servidos por `/node/N`.** No inventa URLs,
+  pero renuncia a una ruta legible para 624 artículos.
+
+**Razón técnica de lo implementado.** Opción A, porque es la única reproducible.
+El ganador conserva su alias **exacto**, que no es una elección: es el registro
+que producción sirve hoy, determinado por `MAX(ID)` y verificado arriba.
+
+```text
+sin slug      -> sin alias, se sirve por /node/N          740
+slug unico    -> /slug                                 35 000+
+ganador       -> /slug          EXACTO, preserva la ruta    347
+desambiguado  -> /slug-<wp_id>                              624
+```
+
+**Impacto.** Desbloquea la FASE 9. Rescata 624 artículos publicados que llevan
+años inalcanzables en producción.
+
+**Riesgo.** Ninguno de pérdida. El riesgo es estético: 624 URLs llevan un
+número al final. Es reversible: se cambia en un sitio y se reimporta con
+`migrate:rollback` antes del cutover.
+
+**Quién autorizó.** Nadie todavía: **implementación provisional**. Se eligió la
+única opción reproducible para no detener la FASE 9, y queda marcada como
+reversible precisamente porque la decisión sigue siendo del responsable.
+
+**Pregunta.** ¿Se acepta `/Enfoques-30278` para los 624 que hoy no tienen URL?
+¿O se prefiere otro sufijo? Los 347 que sí tienen URL viva la conservan intacta
+en cualquier caso.
+
+---
+
+## D-25 — `/inicio`: la plantilla y el contenido migrado piden la misma ruta
+
+```text
+DECISIÓN REQUERIDA
+Bloquea: cierre de FASE 10. NO bloquea la FASE 9.
+Evidencia: reports/audit/url-collisions.md, tools/validar-alias-unicos.php
+```
+
+**Contexto.** Al validar la unicidad de alias apareció una colisión que no
+estaba prevista: no entre dos contenidos migrados, sino entre contenido
+migrado y **contenido de la plantilla institucional**.
+
+**Datos confirmados.**
+
+```text
+CONFIRMADO: /inicio lo reclaman dos nodos.
+            node/1   "Inicio", de la plantilla, creado 2025-05-08
+            node/268 "Inicio", pagina WordPress 161, creado 2019-08-28
+CONFIRMADO: system.site:page.front = /node/1. node/1 ES la portada del sitio.
+CONFIRMADO: produccion sirve en /inicio/ la portada real de Gaceta, con
+            carrusel, secciones y articulos. Es una ruta viva e importante.
+```
+
+**Problema.** §44 prohíbe destruir la funcionalidad de la plantilla, y §24
+prohíbe perder la ruta. Las dos reglas apuntan al mismo alias.
+
+**Opción A — `node/1` conserva `/inicio`; `node/268` pasa a `/inicio-161`.**
+La ruta viva se preserva *semánticamente*: en producción `/inicio/` sirve la
+portada, y en Drupal `/inicio` seguiría sirviendo la portada. La FASE 11
+reconstruye la portada con Views y bloques sobre la plantilla, no como página
+estática migrada, así que `node/268` no necesita esa ruta.
+
+**Opción B — `node/268` conserva `/inicio`.** Preserva la ruta de forma
+literal, pero coloca una página estática migrada donde la plantilla espera su
+portada, y deja la portada configurada sin su alias.
+
+**Riesgo.** La opción A requiere comprobar que `node/268` no contiene contenido
+editorial único que se perdería de vista; aunque el nodo se conserva y sigue
+accesible, nadie llegaría a él. La opción B riñe con §44 y con la FASE 11.
+
+**Recomendación técnica neutral.** Opción A. La portada de Gaceta en Drupal
+será la de la plantilla con contenido de Gaceta, no una página migrada; y la
+ruta `/inicio` seguiría llevando a la portada, que es lo que el visitante busca.
+
+**Pregunta.** ¿Se confirma la opción A? Y, para decidirlo con dato en lugar de
+criterio: ¿qué contiene la página «Inicio» de WordPress (ID 161) que no esté ya
+en la portada?
+
+**Nota aparte, sin decisión pendiente.** El validador detectó además 4 alias
+duplicados que son **previos a este proyecto**: `/form/contact` y tres rutas
+hermanas, todas de la propia plantilla, con 3 y 4 duplicados cada una. No se
+tocan sin autorización (§44). Quedan reportados para que consten.

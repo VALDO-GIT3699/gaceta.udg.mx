@@ -3,17 +3,23 @@
 Tablero contractual de progreso. Rige sobre cualquier afirmación de avance
 hecha en otro lugar.
 
-- Última actualización: **2026-09-30**
-- Fase actual: **FASES 7 y 8 en progreso** (primera migración de datos reales
-  ejecutada con 0 fallos); FASES 0, 1 y 2 cerradas; FASE 4 implementada
+- Última actualización: **2026-10-01**
+- Fase actual: **FASE 9 desbloqueada y lista para ejecutar en masa.** FASES 0,
+  1 y 2 cerradas; FASE 4 implementada; FASES 3, 5, 7, 8 y 10 en progreso
+- Avance estimado del proyecto: **~40 %** (estimación ponderada por esfuerzo,
+  no conteo de casillas; ver la sección «Avance estimado» al final)
 - BLOCKED abiertos: **2** (B-03 base de auditoría, B-04 accesibilidad)
 - BLOCKED resueltos: **1** (B-01 encoding, para la estrategia de importación)
-- Dependencias externas aceptadas: **1** (B-02 media, por decisión D-15)
-- Decisiones abiertas: **9** (D-02, D-03, D-04, D-05, D-08, D-10, D-11, D-12, D-13)
-- Decisiones resueltas por el responsable: **D-14** créditos, **D-15** media,
-  **D-20** módulos, **D-08** despreciar `udg_institucional`
+- Dependencias externas aceptadas: **1** (B-02 media: faltan ~40 GB de
+  `uploads`; cobertura actual medida al 31.1 %, ver `media-inventory.md`)
+- Decisiones abiertas: **13** (D-03, D-04, D-05, D-10, D-11, D-12, D-13, D-16,
+  D-18, D-19, D-21, D-22, D-23, D-25)
+- Decisiones resueltas: **D-01** tema, **D-02** carga por etapas, **D-06** repo,
+  **D-07** producción de sólo lectura, **D-08** despreciar `udg_institucional`,
+  **D-09** GD por proceso, **D-14** créditos, **D-15** media, **D-17** rutas de
+  `foto1`, **D-20** módulos, **D-24** colisiones de slug (provisional)
 - Último dictamen del auditor: **NO AUTORIZADO** (2026-09-30). Hallazgos
-  atendidos en esta revisión; requiere nuevo dictamen.
+  atendidos en revisiones posteriores; **requiere nuevo dictamen**.
 
 ## Leyenda
 
@@ -393,7 +399,7 @@ Los 17 casos previstos tienen resultado conocido.
 ```
 
 ```text
-LA MIGRACIÓN MASIVA SIGUE BLOQUEADA, pero por otra razón: D-16.
+GATE DE LA MIGRACION MASIVA: SUPERADO el 2026-10-01. Ver D-24.
 ```
 
 El caso de la colisión de slug **reprodujo el problema exactamente**: tres
@@ -401,9 +407,34 @@ nodos distintos quedaron con el mismo alias `/Enfoques`. Drupal no impide los
 alias duplicados, los crea sin error, pero sólo uno resuelve.
 
 ```text
-Extrapolado al corpus: 1 382 alias duplicados, de los que sólo uno por grupo
-resolvería. Es una PÉRDIDA SILENCIOSA DE RUTAS, que CLAUDE.md §24 prohíbe.
+Es una PERDIDA SILENCIOSA DE RUTAS, que CLAUDE.md §24 prohibe.
 ```
+
+- [x] Medir y resolver las colisiones de slug (D-24)
+  - Evidencia: `reports/audit/url-collisions.md`
+  - Reproducible con `tools/audit-slug-colisiones.php`
+  - **Alcance real: 347 grupos y 971 registros, no 1 382.** La cifra anterior
+    contaba todos los `post_type`; 7 668 de esos grupos son REVISIONES, que no
+    se migran como contenido. `page` no tiene ninguna colision.
+  - **Verificado contra produccion** (§46, cuatro GET en modo lectura): en cada
+    grupo solo UN registro es accesible hoy. `?p=ID` no salva a los demas:
+    WordPress lo redirige al permalink y ahi gana el mismo. Control con slug
+    unico: correcto.
+  - Por tanto los **624 perdedores no tienen hoy ninguna URL que funcione**.
+    Darles un alias unico no pierde una ruta: crea una que no existe.
+  - Implementado en `GacetaNoticia::prepareRow()`: el ganador conserva su
+    alias EXACTO, los perdedores reciben `/slug-<wp_id>`. Trazado en el campo
+    de origen `alias_colision`.
+  - Probado: 8 registros reimportados, `/Enfoques` -> ID 45900 (el que sirve
+    produccion) y seis `/Enfoques-<ID>`. 0 fallos.
+- [x] Construir el validador de unicidad de alias
+  - Evidencia: `tools/validar-alias-unicos.php`
+  - Existe porque este modo de fallo **no lo detecta ningun conteo**: hay que
+    preguntarlo explicitamente. Se verifica sobre `path_alias` COMPLETO, no
+    solo sobre lo migrado, porque la plantilla ya traia alias propios.
+  - Resultado tras la correccion: cero colisiones de noticias. Quedan 5 alias
+    duplicados, 4 **previos de la plantilla** (`/form/contact` y hermanas) y
+    uno mixto, `/inicio`, que es la decision D-25.
 
 No es un fallo que los conteos detectarían: saldrían 36 666 de 36 666. Es el
 mismo modo de fallo que las entidades HTML en el título, **correcto en los
@@ -426,7 +457,9 @@ sólo contando.
     del corpus.
 - [~] FASE 9 — Migración de contenido
   - Migración `gaceta_noticia` escrita y probada en piloto.
-  - **No ejecutada en masa**: el gate de la FASE 5 lo impide.
+  - **DESBLOQUEADA** el 2026-10-01: la colision de URLs que lo impedia esta
+    medida, resuelta e implementada (D-24). Pendiente de ejecutar en masa.
+  - Migrados hasta ahora: 71 articulos de 36 666, mas 185 paginas.
   - Origen: `GacetaNoticia`, que lee las siete columnas no estándar que
     ninguna herramienta genérica de WordPress conoce.
 - [~] FASE 10 — SEO y URLs
@@ -761,3 +794,39 @@ Formato completo en `docs/decisiones.md`.
    modelo, pero el dump no contiene ninguna clave de crédito en `postmeta`.
    Extraerlos del cuerpo del texto sería una transformación de contenido
    editorial y exige su propia decisión.
+
+
+## Avance estimado del proyecto
+
+```text
+~40 %
+```
+
+Esta cifra es una **estimación ponderada por esfuerzo**, no un conteo de
+casillas. Contar casillas engaña: las fases 11 a 16 (reconstrucción visual,
+accesibilidad, validación, pruebas, sincronización y cutover) apenas tienen
+casillas en este tablero y concentran buena parte del trabajo que falta.
+
+| Fase | Peso | Avance | Nota |
+|---|---:|---:|---|
+| 0 Control | 2 % | 95 % | dos pendientes que no bloquean |
+| 1 Inventario | 6 % | 90 % | |
+| 2 Auditoría BD | 8 % | 95 % | gate de encoding superado |
+| 3 Auditoría media | 5 % | 45 % | hashes bloqueados por B-02 |
+| 4 Modelo Drupal | 8 % | 85 % | implementado |
+| 5 Piloto | 4 % | 90 % | cerrado |
+| 6 Migración media | 10 % | 5 % | bloqueada por B-02 |
+| 7 Taxonomías | 4 % | 80 % | falta `category` |
+| 8 Autores | 4 % | 70 % | falta la cuenta genérica |
+| 9 Contenido | 12 % | 5 % | **desbloqueada hoy**, 71 de 36 666 |
+| 10 SEO y URLs | 8 % | 25 % | falta `metatag` |
+| 11 Reconstrucción visual | 12 % | 5 % | |
+| 12 Accesibilidad | 4 % | 40 % | `accesibilidadUdg` restaurada |
+| 13 Validación automática | 6 % | 20 % | validador de alias creado |
+| 14 Validación visual | 3 % | 5 % | |
+| 15 Pruebas | 3 % | 5 % | |
+| 16 Sincronización y cutover | 1 % | 0 % | |
+
+Los dos bloques más pesados que quedan son la **migración masiva de contenido**
+y la **reconstrucción visual**. El primero acaba de desbloquearse; el segundo
+no ha empezado.
