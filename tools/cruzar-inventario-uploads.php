@@ -49,6 +49,8 @@ $porRuta = [];
 $porNombre = [];
 $bytesTotal = 0;
 $lineas = 0;
+$ruidoMac = 0;
+$bytesRuido = 0;
 
 $fh = fopen($inventario, 'r');
 while (($linea = fgets($fh)) !== FALSE) {
@@ -59,6 +61,18 @@ while (($linea = fgets($fh)) !== FALSE) {
   $partes = explode("\t", $linea);
   $ruta = $partes[0];
   $bytes = isset($partes[1]) ? (int) $partes[1] : 0;
+
+  // Ruido de macOS: al copiar desde un volumen HFS/APFS a uno de Windows,
+  // por cada archivo real aparece un "._nombre" de 4096 bytes con la
+  // bifurcacion de recursos. No es contenido: es metadato del sistema de
+  // archivos de ORIGEN. En el inventario entregado son 214 426 de 428 566
+  // lineas, casi la mitad. Si se cuentan, el reporte afirma el doble de
+  // archivos de los que hay, y 82 GB donde hay 44.
+  if (strpos(basename($ruta), '._') === 0) {
+    $ruidoMac++;
+    $bytesRuido += $bytes;
+    continue;
+  }
 
   $porRuta[$ruta] = $bytes;
   $base = basename($ruta);
@@ -71,8 +85,10 @@ while (($linea = fgets($fh)) !== FALSE) {
 }
 fclose($fh);
 
-fwrite(STDERR, sprintf("   %d archivos, %.2f GB, %d nombres distintos\n",
+fwrite(STDERR, sprintf("   %d archivos reales, %.2f GB, %d nombres distintos\n",
   $lineas, $bytesTotal / 1073741824, count($porNombre)));
+fwrite(STDERR, sprintf("   %d descartados: ruido de macOS (._*), %.2f GB\n",
+  $ruidoMac, $bytesRuido / 1073741824));
 
 // ---------------------------------------------------------------------------
 // 2. Conectar a la base de auditoría.
@@ -201,8 +217,9 @@ $r[] = '';
 $r[] = 'Generado por `tools/cruzar-inventario-uploads.php` el ' . date('Y-m-d');
 $r[] = '';
 $r[] = '```text';
-$r[] = sprintf('Inventario leído:  %d archivos, %.2f GB', $lineas, $bytesTotal / 1073741824);
-$r[] = sprintf('Nombres distintos: %d', count($porNombre));
+$r[] = sprintf('Archivos reales:   %7d   %8.2f GB', $lineas, $bytesTotal / 1073741824);
+$r[] = sprintf('Ruido macOS ._*:   %7d   %8.2f GB   descartado', $ruidoMac, $bytesRuido / 1073741824);
+$r[] = sprintf('Nombres distintos: %7d', count($porNombre));
 $r[] = '```';
 $r[] = '';
 $r[] = '## Adjuntos referenciados por `_wp_attached_file`';

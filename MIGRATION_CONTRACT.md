@@ -234,8 +234,27 @@ la base de auditoría (B-03).
 ## FASE 3 — Auditoría de media
 
 - [x] Determinar si el `uploads` local está completo
-  - Evidencia: `reports/audit/wordpress-inventory.md`
-  - Resultado: **no existe**. No hay copia parcial: no hay copia alguna.
+  - Evidencia: `reports/audit/wordpress-inventory.md`,
+    `reports/audit/media-inventory.md`
+  - Resultado inicial: en esta máquina **no existe**. Ni copia parcial.
+  - Resultado actualizado (2026-10-01): el responsable obtuvo una copia
+    **parcial** en el equipo de su trabajo. Se inventarió sin transferir
+    imágenes y se cruzó contra la base.
+  - Cobertura medida: **15 063 de 48 358 adjuntos, el 31.1 %**.
+  - El patrón es un corte cronológico, no una pérdida aleatoria: todo lo
+    anterior a `2020/09` está completo; desde ahí no hay nada, salvo
+    `2026/01` y `2026/02`.
+- [x] Comparar con el reporte de 84.23 GB
+  - Evidencia: `reports/audit/media-inventory.md`
+  - Recibido: 214 140 archivos, **44.37 GB**. Faltan unos 40 GB.
+  - Las 428 566 líneas del inventario no son 428 566 archivos: 214 426 son
+    `._*` de macOS, metadato del sistema de archivos de origen. No son
+    contenido y no afectan al cruce, pero sí inflaban el conteo.
+- [x] Resolver las referencias de `foto1` sin ruta (D-17)
+  - Evidencia: `reports/audit/media-inventory.md`, `docs/decisiones.md` D-17
+  - 7 266 resueltas a una ruta única, **14 ambiguas (0.09 %)**, 8 822
+    ausentes por ser de los años que faltan.
+  - Generado con `tools/cruzar-inventario-uploads.php`, reproducible.
 - [x] Construir el manifiesto de media (etapa 1 de `docs/media-strategy.md`)
   - Evidencia: `reports/migration/media-manifest-resumen.md`
   - Generado con: `tools/build-media-manifest.php`
@@ -244,17 +263,34 @@ la base de auditoría (B-03).
   - Los CSV completos viven en `work/`, excluido de Git porque contienen
     títulos y pies de foto, es decir contenido editorial, y el remoto es
     público.
-- [!] Relacionar attachments con archivos, hashes, derivados huérfanos
-  - **B-02**: requiere los archivos. Etapa 2.
+- [~] Relacionar attachments con archivos, hashes, derivados huérfanos
+  - **B-02**: parcialmente desbloqueado. La relación attachment → archivo ya
+    está hecha para el 31.1 % que existe. Los hashes SHA-256 que pide §26
+    siguen pendientes: exigen leer el contenido de los archivos, y están en
+    otro equipo.
+- [!] Recibir el resto de `uploads` (unos 40 GB)
+  - **B-02**: dependencia externa. Petición concreta en
+    `reports/audit/media-inventory.md`, sección «Lo que hay que pedir».
+  - `2021/` a `2025/` completas, `2026/03`–`2026/09`, `2020/09`–`2020/12`,
+    `2017/` y `2005/`. Eso cubre 33 176 de los 33 295 ausentes.
 
 ```text
 GATE FASE 3: NO SUPERADO - BLOQUEADO POR DEPENDENCIA EXTERNA
 ```
 
-Sin archivos no se puede calcular hashes (§26), relacionar attachments con
-archivos físicos (§25), detectar derivados ni identificar huérfanos. Lo único
-auditable son las **referencias** en la base de datos, que permiten inventariar
-qué archivos *deberían* existir, no verificar que existan.
+El bloqueo se mantiene, pero su naturaleza cambió y conviene no confundirlas:
+
+```text
+ANTES: no se sabia donde estaban los archivos ni si existian.
+AHORA: se sabe exactamente que existe, que falta y que hay que pedir, con
+       cifras conciliadas. Falta recibirlo.
+```
+
+Siguen pendientes por requerir el contenido de los archivos: hashes SHA-256
+(§26), detección de derivados por comparación real e identificación de
+huérfanos. Para el 68.9 % ausente, lo único auditable continúa siendo la
+**referencia** en la base: permite saber qué archivo *debería* existir, no
+verificar que exista.
 
 ## FASE 4 — Diseño del modelo Drupal
 

@@ -1417,6 +1417,42 @@ texto con el listado de `uploads` resuelve D-17 y además permite verificar las
 recursivo de `/wp-content/uploads` (rutas, nombres y tamaños) en un archivo de
 texto? No es una copia de los archivos y no modifica producción.
 
+### RESUELTA — 2026-10-01 — Opción A, el método funciona
+
+```text
+Autorizó: el responsable, al obtener una copia parcial de uploads en el equipo
+de su trabajo y ejecutar tools/inventario-uploads.ps1 sobre ella.
+Evidencia: reports/audit/media-inventory.md
+Commit: ver el que acompaña a este bloque.
+```
+
+Se siguió la Opción A, en su variante más barata todavía: en lugar de pedir el
+listado a quien administra producción, se generó sobre la copia parcial que el
+responsable ya tenía. No se transfirió ni un byte de imagen a esta máquina.
+
+```text
+Resultado del cruce por nombre, sobre 214 140 archivos reales (44.37 GB):
+  RESUELTAS a una ruta unica   7 266   45.1 %
+  AMBIGUAS (varias carpetas)      14    0.1 %
+  AUSENTES del disco           8 822   54.8 %
+```
+
+**El método queda demostrado.** La duda de D-17 era si buscar por nombre
+bastaría para ubicar archivos que sólo guardan `893024.jpg`. Sí basta: de
+16 102 referencias, apenas 14 resultan ambiguas, el 0.09 %. La Opción B
+—adivinar una carpeta por convención— queda descartada por innecesaria, y la
+Opción C —declarar las imágenes no recuperables— por incorrecta.
+
+```text
+IMPORTANTE, para no leer mal la cifra: las 8 822 AUSENTES no son un fallo del
+metodo. Son los mismos archivos que faltan en la copia parcial. Cuando llegue
+el resto de uploads, se resuelven con el mismo cruce, sin cambiar nada.
+```
+
+Las 14 ambiguas se desempatarán cruzando `post_date` del artículo con la
+carpeta de año y mes. Son 14 registros: si la heurística deja alguno sin
+resolver, se revisa a mano. No se inventará ninguna ruta.
+
 ---
 
 ## D-18 — Las 46 713 imágenes sin texto alternativo
