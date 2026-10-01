@@ -442,11 +442,36 @@ No es un problema de completitud sino de ausencia. Bloquea por completo las
 FASES 3 y 6. **Requiere acceso al árbol de uploads de producción**; no hay
 forma de resolverlo con el material entregado.
 
-### B-03 — Base de datos de auditoría inexistente
+### B-03 — Base de datos de auditoría — ETAPA 1 RESUELTA
 
 ```text
-FASE:     1, 2
-ESTADO:   BLOCKED
+FASE:      1, 2
+ESTADO:    PARCIALMENTE RESUELTO (2026-09-30)
+EVIDENCIA: docs/decisiones.md (D-02)
+```
+
+```text
+CONFIRMADO: gaceta_auditoria creada (utf8mb4 / utf8mb4_unicode_ci).
+CONFIRMADO: 66 tablas extraídas del dump, 830.4 MB, con sus 128 ALTER TABLE.
+CONFIRMADO: el dump original no se modificó.
+PENDIENTE:  dc8_postmeta (2.3 GB) y dc8_post_views (242 MB).
+```
+
+Se resolvió sin esperar a liberar disco, al medir qué hay dentro del dump:
+tres tablas concentran el 98.3 %, así que no hacía falta cargarlo todo para
+empezar a auditar. Herramienta: `tools/extract-tables.py`.
+
+La etapa 1 desbloquea los conteos de `post_type`, `post_status`, autores,
+secciones, subsecciones, `balazo`, `cita`, `foto1`, `original_id`, taxonomías
+y comentarios, es decir la mayor parte de las FASES 1 y 2.
+
+La etapa 2 (`dc8_postmeta`) sigue pendiente y es imprescindible: contiene
+Elementor, las referencias de media, los 7 811 slugs históricos y Yoast.
+
+### Planteamiento original del bloqueo
+
+```text
+ESTADO HISTÓRICO: BLOCKED
 ```
 
 `gaceta_auditoria` no existe en este equipo. La ruta de MariaDB que cita

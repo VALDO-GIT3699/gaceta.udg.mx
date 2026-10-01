@@ -57,6 +57,11 @@ jquery.social.stream*
 *.sql.gz
 *.mysql
 
+# Excepción: los scripts de consulta de tools/ NO son volcados. Son código de
+# auditoría de sólo lectura y deben versionarse para que la migración sea
+# reproducible (CLAUDE.md §31).
+!tools/*.sql
+
 # ---------------------------------------------------------------------------
 # Secretos.
 # ---------------------------------------------------------------------------

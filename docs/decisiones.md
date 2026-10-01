@@ -96,8 +96,94 @@ un requisito de Drupal, no una particularidad local.
 ## D-02 — Base de datos de auditoría
 
 ```text
-DECISIÓN REQUERIDA
-Bloquea: B-03, FASE 1, FASE 2
+Fecha:   2026-09-30
+Estado:  RESUELTA mediante CARGA POR ETAPAS.
+```
+
+### Cómo se resolvió sin esperar a liberar disco
+
+El bloqueo tenía dos causas y ambas desaparecieron:
+
+```text
+Causa 1: incertidumbre sobre el charset de la carga.
+  RESUELTA por reports/audit/encoding-audit.md. Se carga con la conexión en
+  utf8mb4, respetando la cabecera del propio dump, y sin forzar nada.
+
+Causa 2: 14 GB libres de 476 GB (98 % ocupado) frente a un dump de 3.54 GB.
+  RESUELTA al medir qué hay dentro del dump.
+```
+
+La medición por tabla (`tools/audit-table-sizes.py`) cambió el planteamiento:
+
+```text
+dc8_postmeta     2.3 GB    68.28 % del dump
+dc8_posts      772.3 MB    22.85 %
+dc8_post_views 241.8 MB     7.15 %   (estadísticas de un plugin)
+las otras 65 tablas, juntas    < 2 %
+```
+
+```text
+Tres tablas concentran el 98.3 %. No hacía falta cargar todo para empezar.
+```
+
+### Etapa 1, ejecutada
+
+```text
+Herramienta: tools/extract-tables.py --grupo editorial
+Extraído:    830.4 MB, 66 tablas, 128 sentencias ALTER TABLE
+Excluido:    dc8_postmeta (2.3 GB) y dc8_post_views (242 MB)
+Base:        gaceta_auditoria, utf8mb4 / utf8mb4_unicode_ci
+```
+
+Verificaciones previas, exigidas por CLAUDE.md §12:
+
+```text
+CONFIRMADO: gaceta_auditoria NO existía. Se creó vacía.
+CONFIRMADO: no se importó sobre ninguna base existente.
+CONFIRMADO: el dump original no se modificó. Se abrió sólo en lectura.
+CONFIRMADO: no se ejecutó ningún DROP DATABASE.
+CONFIRMADO: no se tocó webcsocial, que es de otro proyecto.
+```
+
+El extractor incluye la cabecera original del volcado, con su
+`/*!40101 SET NAMES utf8mb4 */`, y las sentencias `ALTER TABLE` de las tablas
+seleccionadas. Ese último detalle importa: phpMyAdmin volcó las estructuras
+**sin claves** y añadió 131 `ALTER TABLE` al final del archivo. Sin ellas las
+tablas se habrían cargado sin claves primarias ni índices.
+
+### Etapa 2, pendiente
+
+```text
+dc8_postmeta: 2.3 GB. Contiene Elementor (~47 900 blobs JSON), las referencias
+de media (48 358 rutas), los 7 811 slugs históricos y los datos de Yoast.
+```
+
+Es imprescindible, y es la que no cabe con holgura. Estimación: 2.3 GB de SQL
+dan del orden de 3 a 4 GB cargados con índices. Sobre 14 GB libres quedarían
+entre 8 y 9 GB, contando los 830 MB del archivo extraído y lo ya cargado.
+
+```text
+Es viable, pero deja el equipo con poco margen, y MyISAM no es transaccional:
+si el disco se agota a mitad hay que empezar de cero.
+```
+
+```text
+RECOMENDACIÓN: antes de la etapa 2, liberar espacio o usar otro volumen. El
+archivo .sql extraído se puede borrar tras cargarlo, lo que recupera 830 MB.
+```
+
+Candidatos a liberar, fuera del proyecto: hay **tres** instalaciones de XAMPP
+en el equipo (`C:\xampp`, `C:\xampp8.1.17`, `C:\xampp8.2.12`) y el proyecto
+sólo usa dos. **No se toca ninguna sin autorización**: `C:\xampp8.2.12`
+contiene la base de Drupal y también `webcsocial`, de otro proyecto.
+
+`dc8_post_views` (242 MB) son estadísticas de visitas de Post Views Counter.
+Se puede cargar al final o no cargarse; no es contenido editorial.
+
+### Planteamiento original
+
+```text
+Se conserva como registro de las alternativas evaluadas.
 ```
 
 **Contexto.** CLAUDE.md §12 describe una base `gaceta_auditoria` en MariaDB
