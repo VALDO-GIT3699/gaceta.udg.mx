@@ -235,12 +235,42 @@ proceso** con `-d extension=gd`. Decisión D-09. En un servidor real GD debe
 habilitarse de verdad: es requisito de Drupal.
 
 El sitio se sirve con el servidor de desarrollo de PHP y el router oficial de
-Drupal, no con Apache, para no tocar configuración compartida:
+Drupal, no con Apache, para no tocar configuración compartida. **Con OPcache
+activada**, que en este entorno no es opcional:
 
 ```bash
-php -d extension=gd -d max_execution_time=0 -d memory_limit=512M \
-    -S 127.0.0.1:8091 .ht.router.php
+php -d extension=gd \
+    -d zend_extension=opcache -d opcache.enable=1 \
+    -d opcache.memory_consumption=256 -d opcache.max_accelerated_files=30000 \
+    -d max_execution_time=300 -d memory_limit=512M \
+    -S 127.0.0.1:8092 .ht.router.php
 ```
+
+```text
+POR QUÉ OPCACHE ES OBLIGATORIA AQUÍ, y no una optimización.
+```
+
+Sin ella, cada petición vuelve a leer y parsear todos los archivos PHP de
+Drupal desde OneDrive. Una página de nodo sin caché agotaba el límite de
+ejecución:
+
+```text
+PHP Fatal error: Maximum execution time of 60 seconds exceeded
+  en vendor/composer/ClassLoader.php
+```
+
+El síntoma era engañoso. La portada respondía en 0.22 s y parecía que todo iba
+bien, pero eso era la **caché de página anónima** de Drupal sirviendo HTML ya
+generado. En cuanto se pidió una página que no estaba en caché, el arranque
+completo tardó más de 60 segundos y murió.
+
+```text
+LECCIÓN: medir el rendimiento sólo sobre la portada da una lectura falsa.
+Hay que medir sobre una página NO cacheada.
+```
+
+En un servidor de producción OPcache está activada por defecto, así que esto es
+una particularidad del entorno local y no un problema del proyecto.
 
 ```text
 LECCIÓN OPERATIVA (D-20): tras instalar módulos, drush cache:rebuild NO basta
