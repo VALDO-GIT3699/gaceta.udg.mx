@@ -242,8 +242,36 @@ activada**, que en este entorno no es opcional:
 php -d extension=gd \
     -d zend_extension=opcache -d opcache.enable=1 \
     -d opcache.memory_consumption=256 -d opcache.max_accelerated_files=30000 \
+    -d opcache.validate_timestamps=0 \
+    -d realpath_cache_size=4096k -d realpath_cache_ttl=600 \
     -d max_execution_time=300 -d memory_limit=512M \
-    -S 127.0.0.1:8092 .ht.router.php
+    -S 127.0.0.1:8093 .ht.router.php
+```
+
+```text
+validate_timestamps=0 es la pieza decisiva, no la activación de OPcache.
+```
+
+Medido sobre la misma página de artículo, que NO está en caché de página:
+
+| Configuración | 1ª petición | 2ª petición |
+|---|---:|---:|
+| Sin OPcache | muere a los 60 s | — |
+| OPcache con `validate_timestamps=1` | 41.9 s | 39.5 s |
+| OPcache con `validate_timestamps=0` | **3.2 s** | **0.031 s** |
+
+Activar OPcache sola apenas mejoraba, porque con la revalidación activada
+sigue haciendo `stat` de miles de archivos en cada petición, y eso es
+precisamente lo que OneDrive hace lento.
+
+```text
+El cuello de botella no era parsear PHP: era el sistema de archivos.
+```
+
+```text
+CONTRAPARTIDA: con validate_timestamps=0 el servidor NO detecta cambios en el
+código y hay que reiniciarlo tras editar PHP. Es irrelevante para drush, que
+corre en otro proceso.
 ```
 
 ```text
