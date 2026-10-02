@@ -234,6 +234,44 @@ REGLA: tras instalar modulos, vaciar cache_container ademas de cache:rebuild.
 Es la leccion operativa de D-20.
 ```
 
+## El sitemap, y dos trampas del entorno local
+
+```bash
+drush php:script tools/setup-sitemap.php     # que entidades entran
+drush php:script tools/generar-sitemap.php   # genera
+```
+
+```text
+EN UN SERVIDOR LINUX basta "drush simple-sitemap:generate" y generar-sitemap.php
+NO hace falta. Es un apano local, como la carga de GD por proceso (D-09).
+```
+
+El comando de drush lanza un **subproceso** que invoca `vendor/bin/drush`, y en
+Windows ese archivo es un script de shell sin asociación ejecutable:
+
+```text
+'vendor/bin/drush' is not recognized as an internal or external command
+In ProcessBase.php line 155: Output is empty.
+```
+
+El comando terminaba con código 0 y la tabla `simple_sitemap` se quedaba con 0
+filas. `/sitemap.xml` devolvía la página 404: otro fallo silencioso.
+
+### La URL base del sitemap hay que fijarla a mano
+
+```text
+simple_sitemap.settings: base_url = https://www.gaceta.udg.mx
+```
+
+Al generar por CLI **no hay contexto de petición**, así que el módulo no sabe
+qué dominio poner y escribe `http://default/`. Un sitemap con 45 715 URLs
+apuntando a `http://default/` es inservible y no da ningún error.
+
+```text
+AL DESPLEGAR: comprobar que base_url apunta al dominio REAL del sitio, no al
+de pruebas. Es el valor que los buscadores van a leer.
+```
+
 ## Antes del cutover
 
 ```text

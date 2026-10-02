@@ -3,21 +3,27 @@
 Tablero contractual de progreso. Rige sobre cualquier afirmación de avance
 hecha en otro lugar.
 
-- Última actualización: **2026-10-01**
-- Fase actual: **FASE 9 desbloqueada y lista para ejecutar en masa.** FASES 0,
-  1 y 2 cerradas; FASE 4 implementada; FASES 3, 5, 7, 8 y 10 en progreso
-- Avance estimado del proyecto: **~40 %** (estimación ponderada por esfuerzo,
+- Última actualización: **2026-10-02**
+- Fase actual: **FASE 9 COMPLETADA**: 36 666 de 36 666 noticias migradas, 0
+  ausentes, 0 sobrantes, conciliación exacta campo a campo. FASES 0, 1, 2, 5,
+  7 y 9 cerradas; FASES 3, 8, 10, 11, 12, 13 y 15 en progreso
+- Avance estimado del proyecto: **~71 %** (estimación ponderada por esfuerzo,
   no conteo de casillas; ver la sección «Avance estimado» al final)
 - BLOCKED abiertos: **2** (B-03 base de auditoría, B-04 accesibilidad)
 - BLOCKED resueltos: **1** (B-01 encoding, para la estrategia de importación)
 - Dependencias externas aceptadas: **1** (B-02 media: faltan ~40 GB de
   `uploads`; cobertura actual medida al 31.1 %, ver `media-inventory.md`)
-- Decisiones abiertas: **13** (D-03, D-04, D-05, D-10, D-11, D-12, D-13, D-16,
-  D-18, D-19, D-21, D-22, D-23, D-25)
+- Decisiones abiertas: **12** (D-03, D-04, D-05, D-10, D-11, D-12, D-13, D-16,
+  D-18, D-19, D-21, D-22, D-25)
 - Decisiones resueltas: **D-01** tema, **D-02** carga por etapas, **D-06** repo,
   **D-07** producción de sólo lectura, **D-08** despreciar `udg_institucional`,
   **D-09** GD por proceso, **D-14** créditos, **D-15** media, **D-17** rutas de
-  `foto1`, **D-20** módulos, **D-24** colisiones de slug (provisional)
+  `foto1`, **D-20** módulos, **D-23** comentarios, **D-24** colisiones de slug,
+  **D-26** títulos largos, **D-27** colisión página/noticia, **D-28** eventos,
+  **D-29** formularios, **D-30** cuenta genérica de autor
+- Pendientes de confirmación del responsable, ya implementadas y reversibles:
+  **D-24** el sufijo de desambiguación, **D-26** el corte de título,
+  **D-28** no migrar los lugares, **D-23** dejar fuera los 6 346 de spam
 - Último dictamen del auditor: **NO AUTORIZADO** (2026-09-30). Hallazgos
   atendidos en revisiones posteriores; **requiere nuevo dictamen**.
 
@@ -799,34 +805,36 @@ Formato completo en `docs/decisiones.md`.
 ## Avance estimado del proyecto
 
 ```text
-~40 %
+~71 %
 ```
 
 Esta cifra es una **estimación ponderada por esfuerzo**, no un conteo de
-casillas. Contar casillas engaña: las fases 11 a 16 (reconstrucción visual,
-accesibilidad, validación, pruebas, sincronización y cutover) apenas tienen
-casillas en este tablero y concentran buena parte del trabajo que falta.
+casillas. Contar casillas engaña: las fases 11 a 16 apenas tienen casillas en
+este tablero y concentran buena parte del trabajo que falta.
 
 | Fase | Peso | Avance | Nota |
 |---|---:|---:|---|
 | 0 Control | 2 % | 95 % | dos pendientes que no bloquean |
-| 1 Inventario | 6 % | 90 % | |
+| 1 Inventario | 6 % | 92 % | |
 | 2 Auditoría BD | 8 % | 95 % | gate de encoding superado |
 | 3 Auditoría media | 5 % | 45 % | hashes bloqueados por B-02 |
-| 4 Modelo Drupal | 8 % | 85 % | implementado |
-| 5 Piloto | 4 % | 90 % | cerrado |
-| 6 Migración media | 10 % | 5 % | bloqueada por B-02 |
-| 7 Taxonomías | 4 % | 80 % | falta `category` |
-| 8 Autores | 4 % | 70 % | falta la cuenta genérica |
-| 9 Contenido | 12 % | 5 % | **desbloqueada hoy**, 71 de 36 666 |
-| 10 SEO y URLs | 8 % | 25 % | falta `metatag` |
-| 11 Reconstrucción visual | 12 % | 5 % | |
-| 12 Accesibilidad | 4 % | 40 % | `accesibilidadUdg` restaurada |
-| 13 Validación automática | 6 % | 20 % | validador de alias creado |
-| 14 Validación visual | 3 % | 5 % | |
-| 15 Pruebas | 3 % | 5 % | |
+| 4 Modelo Drupal | 8 % | 95 % | |
+| 5 Piloto | 4 % | **100 %** | cerrado |
+| 6 Migración media | 10 % | 5 % | **bloqueada por B-02: faltan ~40 GB** |
+| 7 Taxonomías | 4 % | 95 % | `category` migrada, 129/129, 103 con padre |
+| 8 Autores | 4 % | 70 % | D-30 cierra el pendiente de la cuenta genérica |
+| 9 Contenido | 12 % | **100 %** | 36 666 de 36 666, conciliación exacta |
+| 10 SEO y URLs | 8 % | 80 % | 1 406 redirecciones 301, metatag de Yoast |
+| 11 Reconstrucción visual | 12 % | 55 % | listados, fichas y taxonomía funcionan |
+| 12 Accesibilidad | 4 % | 75 % | verificada en la prueba de humo |
+| 13 Validación automática | 6 % | 80 % | conciliación, trazabilidad, errores |
+| 14 Validación visual | 3 % | 15 % | |
+| 15 Pruebas | 3 % | 45 % | prueba de humo: 29 OK, 0 fallos |
 | 16 Sincronización y cutover | 1 % | 0 % | |
 
-Los dos bloques más pesados que quedan son la **migración masiva de contenido**
-y la **reconstrucción visual**. El primero acaba de desbloquearse; el segundo
-no ha empezado.
+```text
+EL TECHO SIN LAS FOTOS: la FASE 6 pesa el 10 % y depende de recibir los ~40 GB
+que faltan. Sin ellas, el maximo alcanzable es del orden del 88 %.
+```
+
+El bloque más pesado que queda bajo mi control es la **reconstrucción visual**.

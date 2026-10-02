@@ -2318,3 +2318,72 @@ configuración de Drupal sin pasar por pantalla, reporte ni Git (§37, D-06).
 El webform `contact` de la plantilla **no se toca** (§44).
 
 **Pendiente.** Colocarlos en la página de contacto: eso es FASE 11.
+
+---
+
+## D-30 — La cuenta genérica concentra el 64.5 % del corpus
+
+```text
+RESUELTA CON EVIDENCIA. No hay autoría individual que recuperar.
+Fecha: 2026-10-02
+Cierra el pendiente de la FASE 8.
+```
+
+**Contexto.** 23 663 de las 36 666 noticias, el **64.5 %**, están atribuidas a
+una sola cuenta. Quedaba por determinar si detrás hay autores individuales
+recuperables o si la atribución es institucional de verdad.
+
+**Datos confirmados.**
+
+```text
+#1    Universidad de Guadalajara   (login edvargas20)  23 663   64.5 %
+#16   Laura Sepulveda Velazquez                         2 416    6.6 %
+#87   Gaceta UdeG                                       1 747    4.8 %
+#6    Ivan Serrano Jauregui                               984    2.7 %
+#76   Adrian Montiel Gonzalez                             839    2.3 %
+#72   Pablo Miranda Ramirez                               663    1.8 %
+#86   Universidad de Guadalajara (otra cuenta)            648    1.8 %
+```
+
+Se buscó la firma dentro del propio texto, que es donde estaría si existiera:
+
+```text
+CONFIRMADO: de los 23 663, solo 67 contienen un patron "Por <Nombre>" en
+            post_content. Son el 0.28 %.
+CONFIRMADO: CERO lo tienen en post_excerpt.
+CONFIRMADO: los cuerpos empiezan directamente con el texto del articulo, sin
+            antefirma. Comprobado sobre ejemplos.
+```
+
+**Un detalle que conviene no pasar por alto.** El `user_login` de esa cuenta es
+`edvargas20`, de una persona, pero su `display_name` es «Universidad de
+Guadalajara». WordPress muestra el `display_name`, así que **la atribución
+pública de esos 23 663 artículos es y siempre fue institucional**. Alguien
+publicaba con una cuenta propia bajo un nombre de la institución.
+
+**Opción A — conservar «Universidad de Guadalajara» como crédito.** Es
+exactamente lo que el sitio muestra hoy.
+
+**Opción B — extraer autores del cuerpo.** Recuperaría como mucho 67 de 23 663,
+y para los otros 23 596 habría que inventar una autoría.
+
+**Opción C — dejar esos artículos sin crédito.** Perdería el dato real, que es
+que la autoría es institucional.
+
+**Razón técnica.** Opción A, y ya está implementada: el crédito
+«Universidad de Guadalajara» existe como término de `credito_editorial` y los
+23 663 artículos lo referencian, con `field_wp_user_id` y `field_wp_user_login`
+para la trazabilidad.
+
+```text
+NO HAY PERDIDA. La atribucion migrada es IDENTICA a la que produccion muestra.
+El 64.5 % no es un agujero: es un hecho editorial del corpus.
+```
+
+**Riesgo.** Si en el futuro alguien quiere desglosar esos 67 casos, el dato
+sigue en el cuerpo del artículo y en el origen. No se ha destruido nada.
+
+**Pregunta.** ¿Se quiere que intente extraer esos 67 casos? Son el 0.28 % y
+cada uno habría que revisarlo a mano para no partir mal una frase. Mi
+recomendación es dejarlos como están y, si alguna vez se tocan, hacerlo
+editorialmente y no con una expresión regular.
