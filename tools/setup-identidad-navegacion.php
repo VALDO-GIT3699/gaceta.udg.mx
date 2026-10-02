@@ -24,23 +24,54 @@
  * ```
  *
  * Así que lo que faltaba no era construir listados: era que el sitio dejara de
- * llamarse «Plantilla UDG D10» y que el menú dejara de ofrecer «Ejemplo de
- * Estilos».
+ * llamarse «Plantilla UDG D10» y que el menú fuera el de Gaceta.
  *
- * QUÉ HACE ESTE SCRIPT
+ * EL MENÚ SE COPIA DE PRODUCCIÓN, NO SE DEDUCE
  *
- *   1. El nombre del sitio: «Gaceta UDG», tomado LITERALMENTE del encabezado
- *      de producción, no inventado.
- *   2. El menú principal con las secciones reales de Gaceta, que son las
- *      categorías raíz con más contenido, en el orden de producción.
- *   3. Desactiva, NO BORRA, los enlaces de demostración de la plantilla.
+ * La primera versión de este script eligió las secciones por VOLUMEN de
+ * contenido, suponiendo que las categorías con más artículos serían las de la
+ * navegación. Después se leyó el menú real de producción (§46, modo lectura) y
+ * no coincidía:
  *
  * ```text
- * LOS ENLACES DE DEMO SE DESACTIVAN, NO SE BORRAN. Es reversible con un clic y
- * respeta que el destino del contenido de demostracion es la decision D-05,
- * aun abierta. Dejar "Ejemplo de Estilos" en el menu de Gaceta tampoco es
- * neutral: parece un sitio roto.
+ * PRODUCCION:  Inicio | Investigacion y Conocimiento | Noti Red | Deporte U |
+ *              Talento U | 02 Cultura | Especiales | Informacion Oficial |
+ *              Hemeroteca
+ *
+ * LO QUE YO DEDUJE: incluia Universidad, Primer Plano, Comunidad UdeG y
+ *              Cartones, que tienen MUCHO contenido pero NO estan en el menu;
+ *              y le faltaban Talento U, Especiales y Hemeroteca.
  * ```
+ *
+ * El menú de producción es **manual**, no un árbol de taxonomía: coloca
+ * COVID-19 bajo «Investigación y Conocimiento» aunque en la taxonomía ese
+ * término cuelga de «Especiales». Deducirlo del volumen o de la jerarquía da un
+ * resultado plausible y a la vez equivocado.
+ *
+ * ```text
+ * LECCION: §46 avisa de esto literalmente. "No conviertas una observacion
+ * visual en una decision de modelo de datos sin verificar el origen". Aqui el
+ * error fue el inverso y igual de malo: deducir del modelo de datos algo que
+ * habia que ir a MIRAR.
+ * ```
+ *
+ * «02 CULTURA» SE DEJA COMO ESTÁ
+ *
+ * El término lleva un prefijo numérico que parece un artefacto de ordenación, y
+ * en la primera versión lo limpié a «Cultura». Pero **producción muestra
+ * literalmente «02 Cultura»** en su menú. Así que el prefijo no es un residuo
+ * invisible: es lo que el lector ve hoy.
+ *
+ * ```text
+ * Se conserva por FIDELIDAD, y queda como pregunta para el responsable: si
+ * quiere que diga "Cultura", es cambiar una linea. Lo que no corresponde es
+ * que yo "mejore" el sitio del cliente sin que nadie lo pida.
+ * ```
+ *
+ * «HEMEROTECA» NO SE CREA
+ *
+ * Es el único elemento del menú de producción sin término equivalente en la
+ * taxonomía migrada. No se inventa un destino: se informa y se deja fuera.
  *
  * IDEMPOTENTE. Reversible: sólo toca configuración y enlaces de menú.
  *
@@ -49,6 +80,7 @@
  */
 
 use Drupal\menu_link_content\Entity\MenuLinkContent;
+use Drupal\taxonomy\Entity\Term;
 
 // ---------------------------------------------------------------------------
 // 1. Identidad del sitio.
@@ -65,93 +97,152 @@ else {
 }
 
 // ---------------------------------------------------------------------------
-// 2. El menú principal.
+// 2. El menú principal, copiado del de producción.
 //
-// Las secciones son las categorías RAÍZ con más contenido, que son las mismas
-// que producción muestra en su navegación. Se enlazan a la página del término,
-// que ya funciona.
-//
-// OJO CON LAS ETIQUETAS: el término se llama «02 Cultura», con un prefijo
-// numérico que en WordPress servía para ordenar. En el MENÚ se escribe
-// «Cultura», porque el prefijo es un artefacto de ordenación y no el nombre de
-// la sección. El TÉRMINO NO SE RENOMBRA: es un dato migrado y se queda como
-// está en el origen. Sólo cambia la etiqueta del enlace, que es presentación.
+// La etiqueta es la que produccion muestra. El tid es el termino migrado al que
+// apunta. Los hijos van en 'hijos', con su propia etiqueta y tid.
 // ---------------------------------------------------------------------------
 
-$secciones = [
-  9049 => 'Investigación y Conocimiento',
-  9067 => 'Universidad',
-  9053 => 'Cultura',
-  9052 => 'Noti Red',
-  9046 => 'Primer Plano',
-  9055 => 'Información Oficial',
-  9054 => 'Deporte U',
-  9050 => 'Comunidad UdeG',
-  9048 => 'Cartones',
+$menu = [
+  [
+    'etiqueta' => 'Investigación y Conocimiento',
+    'tid' => 9049,
+    'hijos' => [
+      ['etiqueta' => 'COVID-19', 'tid' => 9139],
+      ['etiqueta' => 'Ciencia y Tecnología', 'tid' => 9075],
+      ['etiqueta' => 'Medio Ambiente', 'tid' => 9077],
+      ['etiqueta' => 'Opinión', 'tid' => 9080],
+      ['etiqueta' => 'Sociedad', 'tid' => 9079],
+      ['etiqueta' => 'Economía', 'tid' => 9076],
+      ['etiqueta' => 'Salud', 'tid' => 9074],
+    ],
+  ],
+  [
+    'etiqueta' => 'Noti Red',
+    'tid' => 9052,
+    'hijos' => [
+      ['etiqueta' => 'Corresponsal Gaceta', 'tid' => 9069],
+    ],
+  ],
+  ['etiqueta' => 'Deporte U', 'tid' => 9054],
+  ['etiqueta' => 'Talento U', 'tid' => 9051],
+  // Se conserva el prefijo: es lo que produccion muestra. Ver el docblock.
+  ['etiqueta' => '02 Cultura', 'tid' => 9053],
+  ['etiqueta' => 'Especiales', 'tid' => 9061],
+  ['etiqueta' => 'Información Oficial', 'tid' => 9055],
 ];
 
 $almacen = \Drupal::entityTypeManager()->getStorage('menu_link_content');
-$peso = -50;
 
-foreach ($secciones as $tid => $etiqueta) {
-  $termino = \Drupal\taxonomy\Entity\Term::load($tid);
-  if (!$termino) {
-    echo "  ! el término $tid no existe. Se omite en lugar de inventar un enlace.\n";
-    continue;
+/**
+ * Crea o reutiliza un enlace de menú a un término.
+ */
+$enlazar = function ($etiqueta, $tid, $peso, $padre = NULL) use ($almacen) {
+  if (!Term::load($tid)) {
+    echo "  ! el término $tid no existe. Se omite \"$etiqueta\" en lugar de\n";
+    echo "    inventar un destino.\n";
+    return NULL;
   }
-
+  $uri = 'entity:taxonomy_term/' . $tid;
   $existentes = $almacen->loadByProperties([
     'menu_name' => 'main',
-    'link.uri' => 'entity:taxonomy_term/' . $tid,
+    'link.uri' => $uri,
   ]);
   if ($existentes) {
-    echo "  = ya existe el enlace: $etiqueta\n";
-    $peso++;
-    continue;
+    $enlace = reset($existentes);
+    $cambio = [];
+    if ($enlace->getTitle() !== $etiqueta) {
+      $enlace->set('title', $etiqueta);
+      $cambio[] = 'etiqueta';
+    }
+    if ((int) $enlace->getWeight() !== $peso) {
+      $enlace->set('weight', $peso);
+      $cambio[] = 'peso';
+    }
+    if ($padre !== NULL && $enlace->getParentId() !== $padre) {
+      $enlace->set('parent', $padre);
+      $cambio[] = 'padre';
+    }
+    if ($cambio) {
+      $enlace->set('enabled', TRUE)->save();
+      echo sprintf("  ~ %-32s (%s)\n", $etiqueta, implode(', ', $cambio));
+    }
+    else {
+      echo sprintf("  = %-32s sin cambios\n", $etiqueta);
+    }
+    return 'menu_link_content:' . $enlace->uuid();
   }
 
-  MenuLinkContent::create([
+  $enlace = MenuLinkContent::create([
     'title' => $etiqueta,
-    'link' => ['uri' => 'entity:taxonomy_term/' . $tid],
+    'link' => ['uri' => $uri],
     'menu_name' => 'main',
     'weight' => $peso,
-    'expanded' => FALSE,
-  ])->save();
+    'expanded' => $padre === NULL,
+    'parent' => $padre ?? '',
+  ]);
+  $enlace->save();
+  echo sprintf("  + %-32s -> termino %d\n", $etiqueta, $tid);
+  return 'menu_link_content:' . $enlace->uuid();
+};
 
-  echo sprintf("  + enlace: %-30s -> termino %d (\"%s\")\n",
-    $etiqueta, $tid, $termino->label());
+$peso = -50;
+foreach ($menu as $entrada) {
+  $idPadre = $enlazar($entrada['etiqueta'], $entrada['tid'], $peso);
   $peso++;
+  if ($idPadre === NULL || empty($entrada['hijos'])) {
+    continue;
+  }
+  $pesoHijo = 0;
+  foreach ($entrada['hijos'] as $hijo) {
+    $enlazar($hijo['etiqueta'], $hijo['tid'], $pesoHijo, $idPadre);
+    $pesoHijo++;
+  }
 }
 
 // ---------------------------------------------------------------------------
-// 3. Los enlaces de demostración de la plantilla.
+// 3. Los enlaces que NO estan en el menu de produccion.
+//
+// Se DESACTIVAN, no se borran: es reversible con un clic, y el destino del
+// contenido de demostracion es la decision D-05, aun abierta. Pero dejar
+// "Ejemplo de Estilos" en el menu de Gaceta tampoco es neutral: parece un
+// sitio roto.
+//
+// Universidad, Primer Plano, Comunidad UdeG y Cartones los habia puesto YO
+// deduciendolos del volumen de contenido. Produccion no los tiene en el menu,
+// asi que salen. Siguen accesibles por su pagina de termino y por los
+// listados: no se pierde ninguna ruta.
 // ---------------------------------------------------------------------------
 
-$demo = [
+$fuera = [
   'DRUDG 10',
   'Ejemplo de Estilos',
   'Ejemplo con archivos',
+  'Universidad',
+  'Primer Plano',
+  'Comunidad UdeG',
+  'Cartones',
+  // La etiqueta limpia que yo habia puesto, ahora sustituida por "02 Cultura".
+  'Cultura',
 ];
 
-$todos = $almacen->loadByProperties(['menu_name' => 'main']);
-foreach ($todos as $enlace) {
-  if (!in_array($enlace->getTitle(), $demo, TRUE)) {
+foreach ($almacen->loadByProperties(['menu_name' => 'main']) as $enlace) {
+  if (!in_array($enlace->getTitle(), $fuera, TRUE)) {
     continue;
   }
   if (!$enlace->isEnabled()) {
-    echo "  = ya estaba desactivado: " . $enlace->getTitle() . "\n";
     continue;
   }
   $enlace->set('enabled', FALSE)->save();
   echo "  - desactivado (NO borrado): " . $enlace->getTitle() . "\n";
 }
 
-// Las secciones de Gaceta pesan menos que los enlaces estructurales de la
-// plantilla, para que la navegacion empiece por el contenido editorial y deje
-// Agenda, Multimedia y Contacto al final, como en produccion.
-foreach ($todos as $enlace) {
-  $t = $enlace->getTitle();
-  if (in_array($t, ['Noticias', 'Agenda', 'Multimedia', 'Contacto'], TRUE)) {
+// ---------------------------------------------------------------------------
+// 4. Los enlaces estructurales de la plantilla van al final, como en produccion.
+// ---------------------------------------------------------------------------
+
+foreach ($almacen->loadByProperties(['menu_name' => 'main']) as $enlace) {
+  if (in_array($enlace->getTitle(), ['Noticias', 'Agenda', 'Multimedia', 'Contacto'], TRUE)) {
     $enlace->set('weight', 10)->save();
   }
 }
@@ -159,5 +250,7 @@ foreach ($todos as $enlace) {
 \Drupal::service('plugin.manager.menu.link')->rebuild();
 
 echo "\n";
-echo "Hecho. Solo configuracion y enlaces de menu: ningun contenido se toco.\n";
-echo "Los enlaces de demostracion quedan DESACTIVADOS, no borrados (D-05).\n";
+echo "FALTA 'Hemeroteca', que produccion tiene en su menu y que NO tiene\n";
+echo "termino equivalente en la taxonomia migrada. No se inventa un destino.\n";
+echo "\n";
+echo "Solo configuracion y enlaces de menu: ningun contenido se toco.\n";
