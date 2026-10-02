@@ -247,6 +247,49 @@ $campos = [
 
   // --- Trazabilidad de los términos de crédito. ---
 
+  // Comentarios historicos, EN MODO CERRADO.
+  //
+  // CLAUDE.md §28 prohibe descartarlos sin autorizacion, y la auditoria aclara
+  // que no son lo que parecian:
+  //
+  //   aprobados      40   reales, de 2020-02 a 2021-04, sobre 22 articulos
+  //   pendientes  6 346   el 99.9 % trae URL de autor y 640 caracteres de
+  //                       media: es la firma del spam de enlaces
+  //   spam            2
+  //
+  // Se crea el campo en estado CERRADO (status 1), no oculto y no abierto:
+  //
+  //   - CERRADO conserva y muestra los 40 comentarios historicos y NO admite
+  //     nuevos. Preserva el contenido sin abrir un canal que nadie va a
+  //     moderar.
+  //   - OCULTO los conservaria en la base pero no los mostraria, que es
+  //     equivalente a perderlos de vista.
+  //   - ABIERTO heredaria un problema de moderacion sin que nadie lo haya
+  //     pedido.
+  //
+  // Los 6 346 pendientes NO se migran, pero NO se destruyen: siguen en el
+  // dump y en la base de auditoria. Es reversible. Decision D-23.
+  'field_comentarios' => [
+    'entity_type' => 'node',
+    'bundle' => 'noticia',
+    'type' => 'comment',
+    'cardinality' => 1,
+    'label' => 'Comentarios',
+    'description' => 'Comentarios históricos de WordPress. Cerrado: conserva los 40 aprobados y no admite nuevos.',
+    'settings' => ['comment_type' => 'comment'],
+    'default_value' => [
+      [
+        // 0 oculto, 1 cerrado, 2 abierto.
+        'status' => 1,
+        'cid' => 0,
+        'last_comment_timestamp' => 0,
+        'last_comment_name' => '',
+        'last_comment_uid' => 0,
+        'comment_count' => 0,
+      ],
+    ],
+  ],
+
   // Metadatos SEO. Un solo campo del modulo metatag guarda todas las etiquetas
   // de la pagina: title, description, canonical, Open Graph y Twitter Cards.
   //
@@ -412,6 +455,15 @@ foreach ($campos as $clave => $d) {
     'description' => $d['description'],
     'required' => FALSE,
   ];
+
+  // Valor por omision de la instancia. Lo necesita el campo de comentarios:
+  // sin el, Drupal abriria los comentarios por defecto.
+  if (isset($d['default_value'])) {
+    $valores['default_value'] = $d['default_value'];
+  }
+  if (isset($d['instance_settings'])) {
+    $valores['settings'] = $d['instance_settings'];
+  }
 
   if ($d['type'] === 'entity_reference') {
     $destinos = [];

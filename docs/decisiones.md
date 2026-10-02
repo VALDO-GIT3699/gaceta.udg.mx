@@ -2167,3 +2167,154 @@ es un criterio elegido: es el que produccción ya aplica. Trazado como
 **Impacto.** 3 noticias cambian de URL. Las 3 rutas vivas se preservan.
 
 **Riesgo.** Ninguno. Son 3 casos enumerados y verificados uno a uno.
+
+---
+
+## D-28 — Los 193 lugares y los 4 eventos no son contenido editorial
+
+```text
+RESUELTA CON EVIDENCIA. No se migran, y no se destruyen.
+Fecha: 2026-10-02
+```
+
+**Contexto.** CLAUDE.md §21 advertía: «No conviertas automáticamente los 193
+lugares en contenido editorial» y pedía investigar si están referenciados.
+Investigado.
+
+**Datos confirmados.**
+
+```text
+tribe_venue       193 publicados + 1 borrador
+tribe_organizer     2 publicados
+tribe_events        4 BORRADORES, ninguno publicado
+
+CONFIRMADO: 0 referencias _EventVenueID y 0 _EventOrganizerID.
+            NINGUN evento apunta a ningun lugar.
+CONFIRMADO: los 4 eventos tienen post_name VACIO. Nunca tuvieron URL.
+CONFIRMADO: los lugares son un catalogo de recintos cargado el 2019-11-14:
+            Auditorio Telmex, Estadio Jalisco, Paraninfo Enrique Diaz de
+            Leon, Calle 2.
+```
+
+**Verificado contra producción** (§46, lectura):
+
+```text
+/venue/auditorio-telmex/  ->  NO sirve el recinto. Sirve una NOTICIA sobre el
+                              Auditorio Telmex, del 2025-03-31.
+```
+
+Es decir: la ruta de lugar no está activa en producción y los lugares **no
+tienen URL propia** que preservar.
+
+**Opción A — no migrarlos.** No hay contenido editorial ni rutas que perder.
+Quedan en el dump y en la base de auditoría, así que es reversible.
+
+**Opción B — migrarlos como contenido.** Crearía 193 nodos sin valor editorial
+en un sitio nuevo, y §29 prohíbe crear estructura sin justificación.
+
+**Razón técnica.** Opción A. Las tres condiciones que harían migrable este
+material no se cumplen: no están referenciados, no son alcanzables y no
+contienen texto editorial. Es residuo de una configuración de plugin
+abandonada en 2019.
+
+```text
+NO ES UNA PERDIDA: §48 admite contenido no migrado CON EXPLICACION, y esta es
+la explicacion. El dato sigue existiendo en el origen.
+```
+
+**Riesgo.** Si en el futuro Gaceta quiere una agenda, el catálogo de recintos
+se puede migrar entonces con este análisis delante. El tipo de contenido
+`evento_de_agenda` de la plantilla ya existe para eso.
+
+**Pregunta.** ¿Se confirma no migrarlos? Es la única parte del corpus que
+propongo dejar fuera, y lo propongo con la evidencia de arriba.
+
+---
+
+## D-23 — RESUELTA: comentarios en modo cerrado
+
+```text
+IMPLEMENTADA. 40 de 40 migrados, 0 fallos.
+Fecha: 2026-10-02
+```
+
+La cifra del panel, «6 346 en moderación», se validó contra SQL como pedía §28,
+y no era lo que parecía:
+
+```text
+aprobados      40   REALES: 2020-02-14 a 2021-04-11, sobre 22 articulos,
+                    todos sobre contenido post_type=post existente
+pendientes  6 346   el 99.9 % trae URL de autor y 640 caracteres de media.
+                    Es la firma del spam de enlaces.
+spam            2
+```
+
+**Lo implementado.** `field_comentarios` en `noticia`, en modo **CERRADO**:
+
+```text
+CERRADO  conserva y MUESTRA los 40 historicos y no admite nuevos.
+OCULTO   los conservaria sin mostrarlos, que es perderlos de vista.
+ABIERTO  heredaria un problema de moderacion que nadie ha pedido.
+```
+
+Los 40 se migraron con su fecha, su autor y su texto. El autor **no** se
+convierte en cuenta de usuario: se trata como comentario anónimo, igual que los
+créditos editoriales en D-14.
+
+```text
+Los 6 346 pendientes NO se migran y NO se destruyen: siguen en el dump y en la
+base de auditoria. §28 prohibe descartarlos sin autorizacion, y esto no los
+descarta: los deja fuera del sitio y documentados. Reversible.
+```
+
+**Pregunta que queda.** ¿Se confirma dejar fuera los 6 346? ¿Y el campo se
+queda cerrado para siempre o se abre en el sitio nuevo?
+
+---
+
+## D-29 — Los formularios se reconstruyen, no se migran
+
+```text
+IMPLEMENTADA. 3 webforms creados.
+Fecha: 2026-10-02
+```
+
+**Contexto.** §16: no se hace «plugin WordPress → plugin Drupal», se hace
+«funcionalidad real → auditoría → decisión → implementación Drupal». Un
+formulario no es contenido: es comportamiento, y Drupal no entiende la
+definición de CF7.
+
+**Datos confirmados.**
+
+```text
+wpcf7_contact_form  4 publicados      wpforms  2 publicados
+
+Formulario de contacto 1   nombre*, correo*, asunto, mensaje
+Newsletter                 correo*
+Colaborador                nombre*, correo*, asunto, mensaje
+Contacto                   nombre*, correo*, asunto, mensaje
+```
+
+Y están **en uso**: `/contacto/` de producción muestra tres formularios
+—consultas generales, colaboración y boletín— que se corresponden con
+Contacto, Colaborador y Newsletter.
+
+```text
+§22 advertia que "0 envios visibles" NO significa que no se usara. Comprobado
+el por que: CF7 no guarda los envios, los MANDA POR CORREO. Las tablas vacias
+no dicen nada sobre el uso.
+```
+
+**Lo implementado.** `gaceta_contacto`, `gaceta_colaborador` y `gaceta_boletin`
+como Webform, con los mismos campos y la misma obligatoriedad.
+
+**Una mejora deliberada:** en Drupal los envíos **sí se guardan**. CF7 sólo los
+mandaba por correo, así que un correo perdido era un mensaje perdido sin
+rastro. Era justamente el riesgo del que advertía §22.
+
+**Los destinatarios** se leen de la base de auditoría y se escriben en la
+configuración de Drupal sin pasar por pantalla, reporte ni Git (§37, D-06).
+
+El webform `contact` de la plantilla **no se toca** (§44).
+
+**Pendiente.** Colocarlos en la página de contacto: eso es FASE 11.
