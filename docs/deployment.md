@@ -75,7 +75,7 @@ de desarrollo, dejarlo en 1.
 Hacen falta **dos**, y no deben mezclarse (§12):
 
 ```text
-webPlantillaUDGD10   el sitio Drupal. Escribe aqui.
+<BD_DRUPAL>   el sitio Drupal. Escribe aqui.
 gaceta_auditoria     el staging de WordPress. SOLO LECTURA.
 ```
 

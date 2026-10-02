@@ -30,7 +30,7 @@ gaceta_auditoria   (MariaDB local, 67 tablas, 2.89 GB)
 modules/custom/gaceta_migrate   (Migrate API)
     |
     v
-webPlantillaUDGD10   (Drupal 10.6.9, 208 tablas)
+<BD_DRUPAL>   (Drupal 10.6.9, 208 tablas)
     |
     v
 validación -> reports/validation/
@@ -131,7 +131,7 @@ Perfil        standard
 Tema          drudg8b3 (Bootstrap 3, 26 regiones, 39 bloques)
 Tema admin    claro
 Módulo clave  udg_liston (listón institucional y accesibilidad)
-Base          webPlantillaUDGD10, 208 tablas
+Base          <BD_DRUPAL>, 208 tablas
 ```
 
 `drudg8b3` y `udg_liston` son el material institucional y **no se sustituyen

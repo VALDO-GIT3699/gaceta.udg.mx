@@ -18,7 +18,7 @@ Fecha:        2026-10-01
 Migraciones:  gaceta_seccion, gaceta_subseccion, gaceta_credito, gaceta_etiqueta
 Orden:        sin dependencias entre ellas; se ejecutaron con --tag=gaceta
 Origen:       gaceta_auditoria, usuario gaceta_ro (SELECT únicamente)
-Destino:      webPlantillaUDGD10
+Destino:      <BD_DRUPAL>
 RESULTADO:    PASS
 ```
 
