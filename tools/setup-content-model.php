@@ -247,6 +247,37 @@ $campos = [
 
   // --- Trazabilidad de los términos de crédito. ---
 
+  // Metadatos SEO. Un solo campo del modulo metatag guarda todas las etiquetas
+  // de la pagina: title, description, canonical, Open Graph y Twitter Cards.
+  //
+  // POR QUE UN CAMPO Y NO VARIOS: metatag resuelve en cascada. Lo que no esta
+  // en el nodo lo hereda de la configuracion global, y lo que no este ahi lo
+  // deriva del contenido. Asi que solo hay que guardar lo que un editor
+  // escribio A MANO y es distinto de lo que se podria derivar.
+  //
+  // Medido en el origen: de 36 666 noticias, solo 910 tienen meta description
+  // escrita por una persona (_yoast_wpseo_metadesc) y 920 tienen focus
+  // keyphrase. El resto lo generaba Yoast con sus plantillas.
+  //
+  // NO se migra el plugin Yoast (§23): se migran los DATOS que tienen valor.
+  'field_metatags' => [
+    'entity_type' => 'node',
+    'bundle' => 'noticia',
+    'type' => 'metatag',
+    'cardinality' => 1,
+    'label' => 'Metadatos SEO',
+    'description' => 'Etiquetas meta de la página. Solo se migran las 910 meta descriptions escritas a mano en Yoast; el resto lo resuelve metatag en cascada.',
+  ],
+  'field_metatags__page' => [
+    'campo_real' => 'field_metatags',
+    'entity_type' => 'node',
+    'bundle' => 'page',
+    'type' => 'metatag',
+    'cardinality' => 1,
+    'label' => 'Metadatos SEO',
+    'description' => 'Etiquetas meta de la página.',
+  ],
+
   // El titulo completo de las 21 noticias cuyo titulo NO CABE en Drupal.
   //
   // node_field_data.title es varchar(255) y es un campo BASE de Drupal: no se
