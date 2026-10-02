@@ -7,9 +7,12 @@ hecha en otro lugar.
 - Fase actual: **FASE 9 COMPLETADA**: 36 666 de 36 666 noticias migradas, 0
   ausentes, 0 sobrantes, conciliación exacta campo a campo. FASES 0, 1, 2, 5,
   7 y 9 cerradas; FASES 3, 8, 10, 11, 12, 13 y 15 en progreso
-- Avance estimado del proyecto: **~71 %** (estimación ponderada por esfuerzo,
+- Avance estimado del proyecto: **~80 %** (estimación ponderada por esfuerzo,
   no conteo de casillas; ver la sección «Avance estimado» al final)
-- BLOCKED abiertos: **2** (B-03 base de auditoría, B-04 accesibilidad)
+- Techo alcanzable SIN recibir las fotos: **~88 %**
+- BLOCKED abiertos: **1** (B-03 base de auditoría)
+- BLOCKED resueltos en esta revisión: **B-04** accesibilidad, verificada
+  funcionando sobre el HTML servido
 - BLOCKED resueltos: **1** (B-01 encoding, para la estrategia de importación)
 - Dependencias externas aceptadas: **1** (B-02 media: faltan ~40 GB de
   `uploads`; cobertura actual medida al 31.1 %, ver `media-inventory.md`)
@@ -482,10 +485,34 @@ sólo contando.
     Twitter Cards propios. La mayoría se genera por plantillas de Yoast en
     `dc8_options`.
 - [ ] FASE 11 — Reconstrucción visual
-- [ ] FASE 12 — Accesibilidad
-- [ ] FASE 13 — Validación automática
-- [ ] FASE 14 — Validación visual
-- [ ] FASE 15 — Pruebas
+- [~] FASE 11 — Reconstrucción visual
+  - Evidencia: `reports/validation/visual-validation.md`
+  - Nombre del sitio, menú principal con sus submenús copiado de producción
+    elemento a elemento, y los 3 formularios en la página de contacto.
+  - Las Views del template recogieron las noticias migradas SOLAS: `/noticias`,
+    las fichas de artículo y las páginas de taxonomía ya funcionan.
+  - Pendiente: el carrusel de portada y el destino del contenido de
+    demostración (D-05).
+- [~] FASE 12 — Accesibilidad
+  - Evidencia: `reports/validation/prueba-humo.md`
+  - **B-04 verificado funcionando**: `accesibilityUdg.js` cargado, más Sepia,
+    Grises, `skip-link` y `visually-hidden` presentes en el HTML servido.
+  - Pendiente: D-12, si se restaura `udg_media` (lleva API keys de terceros).
+- [~] FASE 13 — Validación automática
+  - Evidencia: `reports/validation/content-comparison.md`,
+    `reports/migration/traceability.md`, `reports/migration/migration-errors.md`,
+    `reports/validation/url-comparison.md`
+  - Conciliación exacta: 36 666 de 36 666, reparto por año exacto en 27 años,
+    los 8 campos cuadrados con el origen, 0 mensajes de error en 9 migraciones.
+  - La comprobación CAMPO A CAMPO fue la que encontró las 1 350 secciones
+    perdidas que el total no revelaba.
+- [~] FASE 14 — Validación visual
+  - Evidencia: `reports/validation/visual-validation.md`
+  - Pendiente: no se puede cerrar sin las imágenes (B-02).
+- [~] FASE 15 — Pruebas
+  - Evidencia: `reports/validation/prueba-humo.md`
+  - 29 comprobaciones, 0 fallos: rutas, artículos con acentos, páginas de
+    taxonomía, redirecciones 301, accesibilidad y rendimiento.
 - [ ] FASE 16 — Sincronización final
 
 ## BLOCKED abiertos
@@ -538,8 +565,28 @@ Depende de: B-03
 
 ```text
 FASE:      0, 12
-ESTADO:    PARCIALMENTE CORREGIDO. Queda una decisión abierta (D-12).
-EVIDENCIA: docs/decisiones.md (D-12)
+ESTADO:    VERIFICADO FUNCIONANDO (2026-10-02). Queda abierta D-12, que es
+           OTRA cosa: si se restaura udg_media, que lleva API keys.
+EVIDENCIA: reports/validation/prueba-humo.md, reports/validation/visual-validation.md
+```
+
+```text
+VERIFICADO sobre el HTML que sirve el sitio, por el ARCHIVO que carga el
+navegador y no por el nombre de la libreria:
+
+  accesibilityUdg.js   cargado desde /modules/custom/udg_liston/js/
+  Sepia                presente
+  Grises               presente
+  skip-link            presente
+  visually-hidden      presente
+```
+
+```text
+LA PRIMERA VEZ CERTIFIQUE ESTO MAL. Vi las ETIQUETAS de los botones en el HTML
+y concluí que funcionaba, sin comprobar que el script estuviera cargado. El
+mismo reporte listaba los recursos cargados y accesibilityUdg.js NO estaba
+entre ellos. Ahora tools/prueba-humo.sh comprueba las DOS cosas, y lo hace en
+cada ejecucion.
 ```
 
 Detectado por el auditor de migración. **Confirmado y grave**, porque
@@ -805,36 +852,46 @@ Formato completo en `docs/decisiones.md`.
 ## Avance estimado del proyecto
 
 ```text
-~71 %
+~80 %     techo sin las fotos: ~88 %
 ```
 
-Esta cifra es una **estimación ponderada por esfuerzo**, no un conteo de
-casillas. Contar casillas engaña: las fases 11 a 16 apenas tienen casillas en
-este tablero y concentran buena parte del trabajo que falta.
+Estimación **ponderada por esfuerzo**, no conteo de casillas. Contar casillas
+engaña: las fases 11 a 16 apenas tienen casillas y concentran el trabajo que
+falta.
 
 | Fase | Peso | Avance | Nota |
 |---|---:|---:|---|
-| 0 Control | 2 % | 95 % | dos pendientes que no bloquean |
-| 1 Inventario | 6 % | 92 % | |
+| 0 Control | 2 % | 95 % | dos pendientes que no bloquean (D-06, D-10) |
+| 1 Inventario | 6 % | 98 % | |
 | 2 Auditoría BD | 8 % | 95 % | gate de encoding superado |
-| 3 Auditoría media | 5 % | 45 % | hashes bloqueados por B-02 |
+| 3 Auditoría media | 5 % | 60 % | hashes bloqueados por B-02 |
 | 4 Modelo Drupal | 8 % | 95 % | |
-| 5 Piloto | 4 % | **100 %** | cerrado |
-| 6 Migración media | 10 % | 5 % | **bloqueada por B-02: faltan ~40 GB** |
-| 7 Taxonomías | 4 % | 95 % | `category` migrada, 129/129, 103 con padre |
-| 8 Autores | 4 % | 70 % | D-30 cierra el pendiente de la cuenta genérica |
+| 5 Piloto | 4 % | **100 %** | |
+| 6 Migración media | 10 % | 5 % | **bloqueada: faltan ~40 GB** |
+| 7 Taxonomías | 4 % | 95 % | 9 096 términos, jerarquía preservada |
+| 8 Autores | 4 % | 90 % | D-30 cierra la cuenta genérica |
 | 9 Contenido | 12 % | **100 %** | 36 666 de 36 666, conciliación exacta |
-| 10 SEO y URLs | 8 % | 80 % | 1 406 redirecciones 301, metatag de Yoast |
-| 11 Reconstrucción visual | 12 % | 55 % | listados, fichas y taxonomía funcionan |
-| 12 Accesibilidad | 4 % | 75 % | verificada en la prueba de humo |
-| 13 Validación automática | 6 % | 80 % | conciliación, trazabilidad, errores |
-| 14 Validación visual | 3 % | 15 % | |
-| 15 Pruebas | 3 % | 45 % | prueba de humo: 29 OK, 0 fallos |
+| 10 SEO y URLs | 8 % | 92 % | 1 406 redirecciones, metatag, sitemap |
+| 11 Reconstrucción visual | 12 % | 80 % | menú copiado de producción, shortcodes |
+| 12 Accesibilidad | 4 % | 90 % | **B-04 resuelto y verificado** |
+| 13 Validación automática | 6 % | 95 % | los 13 reportes de §41 |
+| 14 Validación visual | 3 % | 70 % | no se cierra sin imágenes |
+| 15 Pruebas | 3 % | 70 % | 29 comprobaciones, 0 fallos |
 | 16 Sincronización y cutover | 1 % | 0 % | |
 
+## Qué separa el 80 % del 85 %, y por qué no depende de mí
+
 ```text
-EL TECHO SIN LAS FOTOS: la FASE 6 pesa el 10 % y depende de recibir los ~40 GB
-que faltan. Sin ellas, el maximo alcanzable es del orden del 88 %.
+Las dos cosas que faltan para pasar del 80 % estan BLOQUEADAS, y no por
+trabajo pendiente:
+
+  B-02   los ~40 GB de fotos. Afecta a la FASE 6 (10 % del peso), a la FASE 3
+         y al cierre de la FASE 14. Sin ellas el carrusel de portada no tiene
+         sentido y la validacion visual no puede cerrarse.
+
+  D-05   el destino del contenido de DEMOSTRACION de la plantilla. Mientras la
+         portada mezcle "Ejemplo con archivos" con articulos de Gaceta, la
+         FASE 11 no puede declararse cerrada.
 ```
 
-El bloque más pesado que queda bajo mi control es la **reconstrucción visual**.
+Todo lo que estaba bajo mi control sin esas dos cosas está hecho.

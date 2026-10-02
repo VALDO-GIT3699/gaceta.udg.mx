@@ -12,41 +12,41 @@ renderiza, un alias duplicado ni una pagina que tarda 60 segundos.
 ```text
 ========================================================================
 PRUEBA DE HUMO DEL SITIO MIGRADO
-Fecha: 2026-10-02 02:21:14
+Fecha: 2026-10-02 03:37:59
 Base:  http://127.0.0.1:8093
 ========================================================================
 
 1. RUTAS ESTRUCTURALES
-  OK    200 0.057947s  portada                    /
-  OK    200 1.362460s  listado de noticias        /noticias
-  OK    200 0.881704s  agenda                     /agenda
-  OK    200 0.686359s  formulario contacto        /form<ruta-de-articulo>
-  OK    200 0.450373s  formulario colaborador     /form<ruta-de-articulo>
-  OK    200 0.615504s  formulario boletin         /form<ruta-de-articulo>
-  OK    404 0.531345s  404 correcto               <ruta-de-articulo>
+  OK    200 30.234118s  portada                    /
+  OK    200 1.165632s  listado de noticias        /noticias
+  OK    200 0.800043s  agenda                     /agenda
+  OK    200 1.321325s  formulario contacto        /form<ruta-de-articulo>
+  OK    200 0.457410s  formulario colaborador     /form<ruta-de-articulo>
+  OK    200 0.386516s  formulario boletin         /form<ruta-de-articulo>
+  OK    404 0.458765s  404 correcto               <ruta-de-articulo>
 
 2. ARTICULOS MIGRADOS (muestra aleatoria)
-  OK    200 0.839366s  articulo                   <ruta-de-articulo>
-  OK    200 0.540844s  articulo                   <ruta-de-articulo>
-  OK    200 0.415273s  articulo                   <ruta-de-articulo>
-  OK    200 0.479653s  articulo                   <ruta-de-articulo>
-  OK    200 0.365061s  articulo                   <ruta-de-articulo>
-  OK    200 0.407131s  articulo                   <ruta-de-articulo>
-  OK    200 0.335792s  articulo                   <ruta-de-articulo>
-  OK    200 0.377265s  articulo                   <ruta-de-articulo>
+  OK    200 0.695006s  articulo                   <ruta-de-articulo>
+  OK    200 0.611171s  articulo                   <ruta-de-articulo>
+  OK    200 0.312900s  articulo                   /Curso:-periodismo-emprendedor
+  OK    200 0.451346s  articulo                   <ruta-de-articulo>
+  OK    200 0.283130s  articulo                   <ruta-de-articulo>
+  OK    200 0.400872s  articulo                   <ruta-de-articulo>
+  OK    200 0.374515s  articulo                   <ruta-de-articulo>:-¿privados-o-estatales?
+  OK    200 0.354908s  articulo                   <ruta-de-articulo>
 
 3. PAGINAS DE SECCION Y CATEGORIA
-  OK    200 0.797830s  termino 8172               /taxonomy/term/8172
-  OK    200 0.477697s  termino 8228               /taxonomy/term/8228
-  OK    200 0.577291s  termino 8372               /taxonomy/term/8372
-  OK    200 0.436462s  termino 9058               /taxonomy/term/9058
+  OK    200 1.028023s  termino 9120               /taxonomy/term/9120
+  OK    200 0.475310s  termino 9134               /taxonomy/term/9134
+  OK    200 0.435763s  termino 8196               /taxonomy/term/8196
+  OK    200 0.306423s  termino 8111               /taxonomy/term/8111
 
 4. REDIRECCIONES 301 DE URLS HISTORICAS
-  OK    301 0.143314s  redireccion                /Internet:-caro-pero-necesario
-  OK    301 0.089522s  redireccion                <ruta-de-articulo>
-  OK    301 0.147932s  redireccion                /¡Sólo-muévete!
-  OK    301 0.086106s  redireccion                /Agua:-principio-y-fin
-  OK    301 0.176483s  redireccion                /Proyecto-“Sé-bicible”
+  OK    301 0.137316s  redireccion                <ruta-de-articulo>:-necesidad-de-estudios-de-nuevo-enfoque
+  OK    301 0.084367s  redireccion                /Literalmente-“vacas-flacas”
+  OK    301 0.130798s  redireccion                <ruta-de-articulo>
+  OK    301 0.089073s  redireccion                /Ayuquila:-limpieza-a-mediano-plazo
+  OK    301 0.085754s  redireccion                <ruta-de-articulo>
 
 5. ACCESIBILIDAD (§12, B-04)
   OK    presente              accesibilityUdg.js
@@ -57,8 +57,8 @@ Base:  http://127.0.0.1:8093
 
 6. RENDIMIENTO SOBRE PAGINA NO CACHEADA
    (medir solo la portada da una lectura falsa: la sirve la cache)
-  en frio     6.270043s
-  en caliente 0.076868s
+  en frio     5.381712s
+  en caliente 0.037091s
 
 ========================================================================
 RESULTADO: 29 comprobaciones OK, 0 FALLOS
