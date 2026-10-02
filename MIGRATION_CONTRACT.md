@@ -11,10 +11,13 @@ hecha en otro lugar.
 - Fase actual: **FASE 9 ejecutada al completo pero NO CERTIFICADA.** 36 666 de
   36 666 noticias migradas con conciliación exacta campo a campo, pero la
   fase no se cierra: D-19 (revisiones) sigue abierta y define su alcance.
-- Avance estimado: **~80 %**. Es una **estimación ponderada por esfuerzo, no
-  un hecho auditable**: el auditor señaló que no publica su fórmula y
-  descansa sobre fases con cifras que él encontró divergentes. No citarla
-  como dato.
+- Avance estimado: **~79 %**. Es una **estimación ponderada por esfuerzo, no
+  un hecho auditable**: el auditor señaló que no publica su fórmula. No
+  citarla como dato.
+- **Bajó desde el ~80 % que yo declaraba**, y la bajada es correcta: la FASE 9
+  ya no cuenta como certificada (D-19 define su alcance) y se abrió **B-05**,
+  la credencial publicada. Un dictamen que encuentra problemas reales hace
+  bajar el avance, no subirlo.
 - Techo alcanzable SIN recibir las fotos: ~88 %
 
 ### Bloqueos
@@ -528,11 +531,18 @@ sólo contando.
     las fichas de artículo y las páginas de taxonomía ya funcionan.
   - Pendiente: el carrusel de portada y el destino del contenido de
     demostración (D-05).
-- [~] FASE 12 — Accesibilidad
-  - Evidencia: `reports/validation/prueba-humo.md`
-  - **B-04 verificado funcionando**: `accesibilityUdg.js` cargado, más Sepia,
-    Grises, `skip-link` y `visually-hidden` presentes en el HTML servido.
-  - Pendiente: D-12, si se restaura `udg_media` (lleva API keys de terceros).
+- [x] FASE 12 — Accesibilidad
+  - Evidencia: `reports/validation/prueba-humo.md`,
+    `reports/audit/dictamen-auditor-2026-10-02.md`
+  - **CIERRE AUTORIZADO POR EL AUDITOR** (2026-10-02), que lo verificó por su
+    cuenta sobre el HTML servido y no sobre mis reportes.
+  - `accesibilityUdg.js` cargado, más Sepia, Grises, Invertir de color,
+    `skip-link`, `visually-hidden` y `aria-label` presentes.
+  - `udg_media` ya NO es una referencia rota: se declara con su hoja de
+    estilos y sin ningún JS, así que ningún bloque pide una librería
+    inexistente. Antes generaba un error en cada renderizado.
+  - Pendiente, y es OTRA cosa: D-12, si se restauran los scripts de
+    `udg_media`, uno de los cuales declara una clave de API de un tercero.
 - [~] FASE 13 — Validación automática
   - Evidencia: `reports/validation/content-comparison.md`,
     `reports/migration/traceability.md`, `reports/migration/migration-errors.md`,
@@ -889,18 +899,23 @@ Formato completo en `docs/decisiones.md`.
 El auditor encontró una que no estaba rastreada en ninguna casilla
 (hallazgo P-9):
 
-- [ ] **§36 — Hash de migración**
-  - `docs/migration-strategy.md:127` lo plantea sólo como «Propuesta».
-  - `work/traceability.csv` tiene 13 columnas y le faltan `migration_hash` y
-    `validation_date`, que §35 enumera.
-  - **No es un olvido menor:** la FASE 16 depende de él para detectar qué
-    cambió en WordPress desde la foto del 2026-09-17. Sin hash, la única forma
-    de saber si un artículo se editó es confiar en `post_modified`, y 12 860
-    registros lo tienen posterior a `post_date`.
-  - §36 exige además documentar **exactamente** qué campos entran al hash.
+- [x] **§36 — Hash de migración**
+  - Evidencia: `tools/calcular-hash-migracion.php`
+  - **36 851 hashes SHA-256, todos distintos, 0 registros sin destino.**
+  - Los 11 campos que entran están documentados **exactamente**, como §36
+    exige, en el encabezado del script.
+  - Se calculan sobre el valor **CRUDO del origen**, antes de cualquier
+    transformación mía. Si se calcularan sobre el resultado, cambiar mi propio
+    código alteraría el hash de 36 851 registros sin que nadie hubiera tocado
+    WordPress, y la sincronización creería que todo cambió.
+  - Para qué sirve: la FASE 16 recalcula el hash sobre el volcado nuevo y
+    compara. Distinto = reimportar. Igual = saltar **aunque `post_modified`
+    haya cambiado**, y eso importa porque 12 860 registros lo tienen posterior
+    a `post_date`.
 
-- [ ] **§35 — Completar la matriz de trazabilidad**
-  - Faltan las columnas `migration_hash` y `validation_date`.
+- [x] **§35 — Matriz de trazabilidad completa**
+  - Evidencia: `work/traceability.csv`, 15 columnas
+  - Ya incluye `migration_hash` y `validation_date`, que faltaban.
 
 ## Avance estimado del proyecto
 

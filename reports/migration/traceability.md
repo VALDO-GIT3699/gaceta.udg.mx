@@ -43,6 +43,71 @@ Con original_id del sistema anterior     25121
 antes**, desde el sistema que Gaceta usaba antes de WordPress. Conservar
 ese identificador mantiene viva la cadena completa de procedencia.
 
+## El hash de migración (§36)
+
+```text
+36 851 hashes SHA-256. TODOS DISTINTOS. 0 registros sin destino.
+```
+
+§36 obliga a documentar **exactamente** qué campos entran. Son 11, en este
+orden, separados por el ASCII 31:
+
+```text
+ID · post_title · post_name · post_content · post_excerpt · post_status
+post_date · post_author · seccion · subseccion · balazo
+```
+
+El separador es ASCII 31 a propósito: no aparece en texto editorial, así que
+dos registros distintos no pueden producir la misma cadena por concatenación
+ambigua.
+
+### Se calcula sobre el origen CRUDO, y esa es la decisión importante
+
+El valor entra **tal como está en WordPress**, antes de cualquier
+transformación mía: sin decodificar entidades HTML, sin convertir shortcodes.
+
+```text
+SI SE CALCULARA SOBRE EL RESULTADO, cambiar mi propio codigo alteraria el hash
+de 36 851 registros sin que nadie hubiera tocado WordPress, y la
+sincronizacion final creeria que TODO cambio.
+
+EL HASH MIDE EL ORIGEN, NO MI TRABAJO.
+```
+
+### Para qué sirve, que no es para adornar la matriz
+
+La migración se hizo sobre un volcado del **2026-09-17 12:39** y WordPress
+sigue publicando. La FASE 16 tiene que saber qué cambió.
+
+Sin hash, la única respuesta es confiar en `post_modified`, y no basta:
+
+```text
+CONFIRMADO: 12 860 articulos tienen post_modified POSTERIOR a post_date.
+```
+
+`post_modified` cambia cuando alguien abre y guarda sin tocar nada, y **no
+cambia** si el contenido se altera por SQL. El hash compara el contenido.
+
+```text
+EN LA SINCRONIZACION: se recalcula sobre el volcado nuevo y se compara.
+  distinto -> reimportar ese articulo
+  igual    -> saltarlo AUNQUE post_modified haya cambiado
+```
+
+### Qué NO entra, y por qué
+
+```text
+foto1, term_id, original_id   identificadores: no cambian nunca
+comment_count                 cambia al comentar, sin tocar el articulo
+post_modified                 es precisamente lo que el hash viene a no tener
+                              que creer
+```
+
+```text
+CAMBIAR LA LISTA DE CAMPOS INVALIDA TODOS LOS HASHES ANTERIORES. Si se cambia,
+hay que recalcularlos.
+```
+
 ## Dónde está el detalle
 
 ```text
