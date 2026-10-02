@@ -272,6 +272,45 @@ AL DESPLEGAR: comprobar que base_url apunta al dominio REAL del sitio, no al
 de pruebas. Es el valor que los buscadores van a leer.
 ```
 
+## El índice de búsqueda: hay que construirlo a mano la primera vez
+
+§34 incluye la búsqueda entre los criterios de aceptación. Tras la migración
+masiva el estado era éste:
+
+```text
+nodos publicados        36 803
+nodos en el indice         246
+```
+
+La caja de búsqueda funcionaba, respondía y devolvía casi nada. **Sin dar
+ningún error**: otro fallo silencioso.
+
+Drupal indexa por cron, a razón de `search.settings: index.cron_limit`
+elementos por ejecución, que por omisión son 100. Con 36 803 nodos son **369
+ejecuciones de cron**: con cron cada hora, quince días.
+
+```bash
+drush php:script tools/indexar-busqueda.php
+```
+
+El script sube el límite, indexa de golpe y **restaura el límite original al
+terminar**, incluso si falla a mitad: dejar el sitio con `cron_limit = 1000`
+haría que cada cron de producción reindexara mil nodos sin que nadie lo
+hubiera pedido.
+
+```text
+MEDIDO en este entorno local: unos 72 nodos por minuto, asi que la carga
+inicial completa son varias HORAS. El cuello de botella es el mismo de siempre:
+cada nodo se renderiza para indexarlo y los archivos estan en OneDrive.
+```
+
+```text
+EN UN SERVIDOR REAL es mucho mas rapido, y despues el cron normal mantiene el
+indice al dia por si solo. Este script es solo para la carga INICIAL.
+```
+
+El script es **reanudable**: si se corta, se vuelve a lanzar y sigue donde iba.
+
 ## Antes del cutover
 
 ```text
