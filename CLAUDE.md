@@ -2555,3 +2555,465 @@ como terminadas sin evidencia. Pregunta cuando el criterio no esté
 definido.**
 
 ------------------------------------------------------------------------
+
+# 52. ESTADO DEL PROYECTO Y CONTEXTO PARA UNA SESIÓN NUEVA
+
+```text
+ESTA SECCION LA ESCRIBE EL AGENTE, NO EL RESPONSABLE.
+Fecha: 2026-10-02
+Las secciones 0 a 51 son el CONTRATO y NO se han modificado. Si alguna vez
+hay que elegir, manda el contrato; esta seccion solo cuenta en que punto esta
+el trabajo.
+```
+
+Lee esto **después** del contrato y **antes** de tocar nada. Está escrito para
+que una sesión nueva no tenga que redescubrir lo que ya costó aprender.
+
+## 52.1 Dónde está el trabajo, de un vistazo
+
+```text
+Avance estimado: ~79 %   Techo sin recibir las fotos: ~88 %
+Dictamen del auditor (2026-10-02): BLOCKED / NO AUTORIZADO
+  Evidencia: reports/audit/dictamen-auditor-2026-10-02.md
+```
+
+Migrado y conciliado en el destino:
+
+```text
+noticias            36 670   (36 666 migradas + 4 de demo de la plantilla)
+paginas                195   (185 migradas + 10 de demo)
+terminos             9 156   tags 7 724 · subseccion 654 · seccion 447
+                             credito 142 · categoria_wp 129 · resto, plantilla
+redirecciones 301    1 090
+comentarios             40
+alias de ruta       36 152
+sitemap             51 716 URLs
+indice de busqueda  26 630 de 36 907   <-- INCOMPLETO, ver 52.7
+```
+
+```text
+LA CONCILIACION ESTA EXACTA: 36 666 de 36 666, 0 ausentes, 0 sobrantes, los 8
+campos cuadrados contra el origen, 0 mensajes de error en las 9 migraciones.
+Lo verifico el auditor por ENTIDAD y no por mapa.
+```
+
+Commits: **44** en el repo del proyecto, **39** en el repo de Drupal.
+
+## 52.2 El entorno, con sus rarezas
+
+```text
+PHP        8.2.12   C:\xampp\php\php.exe
+MariaDB    10.4.32  en 127.0.0.1, usuario root SIN contrasena
+Drush      12.5.3   vendor/drush/drush/drush.php (NO vendor/bin/drush)
+Drupal     10.6.9   plantilla_drupal/Drudg10.6.9   <-- repo Git INDEPENDIENTE
+Sitio      http://127.0.0.1:8093
+```
+
+Dos bases, y **no se mezclan**:
+
+```text
+<BD_DRUPAL>        el sitio. Se escribe aqui. El nombre NO se versiona: ver 52.9
+gaceta_auditoria   staging de WordPress. SOLO LECTURA.
+```
+
+### Arrancar el sitio
+
+```bash
+cd plantilla_drupal/Drudg10.6.9
+php -d extension=gd -d zend_extension=opcache -d opcache.enable=1 \
+    -d opcache.memory_consumption=256 -d opcache.max_accelerated_files=30000 \
+    -d opcache.validate_timestamps=0 \
+    -d realpath_cache_size=4096k -d realpath_cache_ttl=600 \
+    -d max_execution_time=300 -d memory_limit=512M \
+    -S 127.0.0.1:8093 .ht.router.php
+```
+
+```text
+validate_timestamps=0 ES OBLIGATORIO AQUI, no una optimizacion. Sin OPcache una
+pagina de articulo moria a los 60 s. Con validate_timestamps=1, 41.9 s. Con 0:
+3.2 s en frio y 0.03 s en caliente. El cuello de botella es OneDrive haciendo
+stat de miles de archivos, no parsear PHP.
+
+CONTRAPARTIDA: el servidor NO detecta cambios en PHP ni en settings.php. Hay
+que REINICIARLO tras editarlos. Ya costo un HTTP 500 que parecia un fallo de la
+rotacion de credenciales y era esto.
+```
+
+### Drush, siempre con GD por proceso
+
+```bash
+cd plantilla_drupal/Drudg10.6.9
+php -d extension=gd vendor/drush/drush/drush.php <comando>
+```
+
+`gd` está comentada en un `php.ini` compartido con otro proyecto, así que **no
+se modifica**: se carga por proceso (decisión D-09). En un servidor real hay
+que habilitarla de verdad.
+
+## 52.3 Trampas del entorno que ya se pagaron
+
+Cada una costó tiempo y **todas vuelven a aparecer** si no se saben.
+
+```text
+1. Git Bash convierte "/noticias" en "C:/Program Files/Git/noticias" al
+   pasarlo como argumento. Usa MSYS_NO_PATHCONV=1, pero SOLO en la invocacion
+   concreta: exportarlo global rompe la ruta de drush.
+
+2. python en Windows imprime \r\n. La sustitucion de comandos solo quita \n, y
+   la URL queda con un retorno de carro -> curl devuelve 000 en TODO, como si
+   el servidor estuviera caido.
+
+3. curl manda los bytes crudos. El corpus es en espanol: las URLs con acentos
+   dan 404 si no se codifican en porcentajes. Un navegador lo hace solo.
+
+4. Los heredoc de bash de esta sesion COLAPSAN las barras invertidas. Para
+   parches con \t, \n o rutas de Windows, escribe un archivo con la
+   herramienta de escritura en lugar de un heredoc.
+
+5. drush CONSUME el stdin de un bucle while-read y se come las lineas que
+   quedan. Lee por un descriptor aparte (3<) y pon </dev/null en cada drush.
+
+6. Al matar un guion, el proceso HIJO de drush NO muere con el. Sigue
+   trabajando. Hay que matar tambien el php.exe.
+
+7. Un import cortado deja la migracion marcada "Importing" y cualquier
+   import o rollback posterior falla con "esta ocupada con otra operacion".
+   Se repone con migrate:reset-status.
+
+8. automated_cron esta ACTIVO con intervalo de 3 h y system.cron_last marca
+   1969: cualquier peticion lo dispara, y el cron indexa la busqueda. Dos
+   indexadores a la vez dan "Duplicate entry" en search_dataset. Hay que
+   desactivarlo mientras se indexa.
+
+9. Tras instalar modulos, drush cache:rebuild NO basta. Hay que vaciar
+   cache_container o la peticion web falla con clases que SI existen en disco.
+
+10. Composer falla por el requisito ext-gd. Ejecutalo con un PHP que la cargue:
+    php -d extension=gd /c/ProgramData/ComposerSetup/bin/composer.phar ...
+    NO uses --ignore-platform-req.
+```
+
+## 52.4 Las tres puertas de validación: no son opcionales
+
+Este proyecto ha tenido **siete fallos silenciosos**: `failed_count = 0`,
+conteos correctos y resultado incorrecto. Los conteos no detectan ninguno.
+
+```bash
+# Desde plantilla_drupal/Drudg10.6.9, con el prefijo de drush de 52.2
+drush php:script ../../tools/validar-alias-unicos.php        # §24
+drush php:script ../../tools/validar-destino-migraciones.php # perdida en destino
+drush php:script ../../tools/conciliar-conteos.php           # §34, campo a campo
+bash tools/prueba-humo.sh                                    # FASE 15, desde la raiz
+```
+
+```text
+EJECUTA LAS CUATRO TRAS CUALQUIER ROLLBACK O IMPORT. Sin excepcion.
+```
+
+Qué encontró cada una, para que se entienda por qué existen:
+
+```text
+validar-alias-unicos        /Enfoques apuntando a 3 nodos; 66 rutas perdidas
+                            por colacion; colision noticia/pagina; 13 749
+                            filas de alias redundantes
+validar-destino-migraciones 63 redirecciones y 6 comentarios que el mapa
+                            declaraba y la tabla no tenia
+conciliar-conteos           1 350 secciones y 978 subsecciones sin referencia,
+                            con el total diciendo 36 666 de 36 666
+prueba-humo                 una redireccion que devolvia 200 en vez de 301
+```
+
+### La causa de fondo, que se repitió tres veces
+
+```text
+AGRUPAR CON UN CRITERIO Y BUSCAR CON OTRO.
+
+MySQL usa utf8_general_ci: no distingue mayusculas ni acentos. GROUP BY junta
+"Buzon", "Buzon con tilde" y "buzon" y devuelve UNA grafia. PHP compara byte a
+byte y no la encuentra.
+
+REGLA: cuando la comparacion se pueda hacer EN SQL, con la colacion de la
+propia base, HAZLA EN SQL. src/NormalizaTexto.php APROXIMA la colacion y lleva
+una advertencia explicita: no la sustituye. Ya se quedo corto una vez con "š".
+```
+
+## 52.5 Arquitectura de la migración
+
+```text
+plantilla_drupal/Drudg10.6.9/modules/custom/gaceta_migrate/
+├── src/NormalizaTexto.php          criterio UNICO de comparacion
+├── src/Plugin/migrate/
+│   ├── source/   GacetaNoticia, GacetaPagina, GacetaSeccion,
+│   │             GacetaSubseccion, GacetaCredito, GacetaEtiqueta,
+│   │             GacetaCategoria, GacetaRedireccion, GacetaComentario
+│   └── process/  GacetaShortcodes
+└── migrations/   un YAML por migracion
+```
+
+### Orden de ejecución, y por qué importa
+
+```bash
+drush migrate:import gaceta_seccion gaceta_subseccion gaceta_credito \
+                     gaceta_etiqueta gaceta_categoria
+drush migrate:import gaceta_pagina
+bash tools/migrar-noticias-por-lotes.sh 1000 60
+drush migrate:import gaceta_redireccion
+drush migrate:import gaceta_comentario
+```
+
+```text
+Las noticias referencian taxonomias y creditos por migration_lookup. Si no
+existen ANTES, las referencias quedan vacias SIN DAR NINGUN ERROR.
+```
+
+### La trampa del rollback
+
+```text
+Revertir una migracion PADRE destruye en silencio entidades HIJAS de OTRAS
+migraciones, y sus mapas NO se enteran:
+
+  migrate:rollback gaceta_noticia  ->  borra sus COMENTARIOS (cascada) y las
+                                       REDIRECCIONES que apuntan al nodo
+
+Al reimportar el padre, esas migraciones se saltan las filas porque su mapa ya
+las considera hechas. Asi se perdieron 63 redirecciones y 6 comentarios.
+
+DESPUES DE CUALQUIER ROLLBACK: validar-destino-migraciones.php y, si hace
+falta, rollback+import de los hijos por --idlist.
+```
+
+### Y la de --update
+
+```text
+"--update" NO se trocea con --limit: sin nada que saltar, cada lote reprocesa
+LAS MISMAS filas y el mapa no crece nunca. Se ve como "0 created, 1000
+updated" repetido. El modo update del ejecutor de lotes hace UNA pasada sin
+limite.
+
+Ademas, --update deja el alias ANTIGUO en path_alias junto al nuevo, porque
+Drupal inserta en lugar de actualizar. Una pasada sobre 8 305 nodos dejo
+13 749 filas sobrantes. Se limpia con limpiar-alias-redundantes.php. Por eso
+las reparaciones se hacen con rollback+import, no con --update.
+```
+
+## 52.6 Las herramientas, y para qué sirve cada una
+
+```text
+AUDITORIA DEL ORIGEN
+  extract-tables.py            carga el volcado por etapas a gaceta_auditoria
+  audit-encoding.py            el gate de encoding
+  audit-slug-colisiones.php    las 347 colisiones de slug
+  auditar-enlaces-internos.php las URL absolutas del cuerpo
+  inventario-uploads.ps1       inventario de uploads SIN mover archivos (PS 5.1)
+  cruzar-inventario-uploads.php cruza ese inventario contra las referencias
+
+MODELO Y CONFIGURACION  (idempotentes)
+  setup-content-model.php        vocabularios y campos
+  setup-noticia-display.php      hace VISIBLES los campos
+  setup-identidad-navegacion.php nombre del sitio y menu
+  setup-formularios.php          los 3 webforms
+  setup-pagina-contacto.php      los coloca en /contacto
+  setup-seo-metatag.php          plantillas de Yoast -> metatag
+  setup-sitemap.php              que entra en el sitemap
+
+EJECUCION
+  migrar-noticias-por-lotes.sh   FASE 9 por lotes, con bitacora, se DETIENE
+                                 si failed > 0
+  reparar-secciones.{php,sh}     rehace registros por --idlist
+  reparar-metatags.sh / reparar-shortcodes.sh   lo mismo, otras listas
+  generar-sitemap.php            genera el sitemap EN PROCESO
+  indexar-busqueda.{php,sh}      indice de busqueda, una tanda por proceso
+
+VALIDACION
+  validar-alias-unicos.php          §24
+  validar-destino-migraciones.php   mapa contra tabla, las 9 migraciones
+  conciliar-conteos.php             §34, campo a campo
+  prueba-humo.sh                    el sitio RESPONDE, 29 comprobaciones
+  limpiar-alias-redundantes.php     filas sobrantes, simula por omision
+  generar-reportes-trazabilidad.php los reportes de §41
+  calcular-hash-migracion.php       el hash de §36
+
+SEGURIDAD
+  rotar-credenciales.php         rota contrasena y hash_salt, simula por omision
+```
+
+```text
+TODO lo que escribe en work/ se queda FUERA de Git: lleva titulos de articulo y
+rutas, que son contenido editorial, y el remoto es PUBLICO.
+```
+
+## 52.7 Pendientes, en orden
+
+### Lo que bloquea
+
+```text
+B-02  LAS FOTOS. Faltan ~40 GB de /wp-content/uploads. Cobertura medida: 31.1 %.
+      Pedir: 2021/ a 2025/ completas, 2026/03-09, 2020/09-12, 2017/, 2005/.
+      Eso cubre 33 176 de los 33 295 adjuntos ausentes.
+      Vale 10 puntos de avance por si solo y bloquea las FASES 3, 6 y 14.
+
+B-03  base de auditoria: abierto.
+```
+
+### Decisiones abiertas: 10
+
+```text
+D-25  /inicio: comparar la pagina "Inicio" de WordPress contra la portada
+      ANTES de decidir. El responsable pidio expresamente no cerrarla. Es el
+      UNICO conflicto de alias que queda en todo el sitio.
+D-05  despublicar (NO borrar) el contenido de demo, tras inventariar los 56
+      nodos y verificar que son demo y no contenido de Gaceta.
+D-04  retencion de envios de formulario. PENDIENTE del responsable de
+      proteccion de datos. Ya estan configurados para NO guardar.
+D-10  purgar el historial. YA se puede: la rotacion esta hecha y verificada.
+D-11  mojibake: 3 501 articulos (9.5 %). NO sustituir en masa; muestra y
+      demostracion primero.
+D-12  udg_media. Ya NO da error (declarada con CSS y sin JS). Queda si se
+      restauran los scripts, uno con una clave de API.
+D-18  texto alternativo: solo 645 de 48 369 lo tienen. Pie de foto cuando sea
+      semanticamente apropiado; NUNCA derivarlo del titulo. Depende de B-02.
+D-03  Elementor: de-escalado. 2 359 articulos publicados, ninguno con cuerpo
+      vacio.
+D-13  que copia de la plantilla es la autoritativa. Sin impacto.
+D-22  las 740 sin titulo. Implementado con marcador explicito.
+```
+
+### Tareas confirmadas el 2026-10-02 que quedaron a medias
+
+El responsable confirmó varias decisiones **con condiciones**, y esas
+condiciones son trabajo pendiente:
+
+```text
+D-24  documentar los 624 casos y conservar el mapa old_url -> new_url
+D-26  documentar DONDE queda el titulo completo de los 21
+D-27  reflejar las 3 colisiones en el mapa de URLs
+D-28  re-verificar que los 193 lugares no tienen referencias activas
+D-21b convertir los 94 [video]/[audio]/[embedyt], registrando cada
+      transformacion. AUTORIZADO, sin hacer.
+D-21c inventario detallado de los 148 [vc_]/[td_]. NO convertir con regex.
+      "No destruir ni simplificar esos contenidos."
+D-19  documentar la no migracion de las 77 307 revisiones
+      Registro personal de 2021 en la plantilla: identificar donde esta y
+      documentar SOLO su existencia. No copiarlo a Git, no incluir sus datos
+      en reportes, no migrarlo.
+```
+
+### Trabajo tecnico sin decisión de por medio
+
+```text
+Indice de busqueda INCOMPLETO: 26 630 de 36 907. Faltan 10 277.
+  bash tools/indexar-busqueda.sh 500 40
+  Son ~72 nodos/minuto aqui, asi que varias horas. Es reanudable y desactiva
+  automated_cron mientras trabaja.
+
+FASE 11: la portada mezcla demo con Gaceta (D-05) y el carrusel esta vacio,
+  pero poblarlo depende de las fotos.
+
+FASE 16: el procedimiento esta escrito en docs/sincronizacion-cutover.md. El
+  volcado es del 2026-09-17 12:39 y WordPress sigue publicando: la brecha
+  crece cada dia. El hash de §36 ya existe para detectar que cambio.
+```
+
+## 52.8 Decisiones ya cerradas que conviene no reabrir sin motivo
+
+```text
+D-01 tema drudg8b3 · D-02 carga por etapas · D-06 repo en la raiz, remoto
+PUBLICO · D-07 produccion de SOLO LECTURA · D-08 despreciar udg_institucional
+D-09 GD por proceso · D-14 creditos como vocabulario, NO cuentas de usuario
+D-15 migrar sin los archivos de media · D-16 redirecciones inertes descartadas
+D-17 rutas de foto1 por busqueda de nombre · D-19 revisiones NO se migran
+D-20 modulos instalados · D-21 shortcodes (a y b si, c NO con regex)
+D-23 comentarios en modo CERRADO, 40 de 40 · D-24 sufijo /slug-<wp_id>
+D-26 titulo cortado + field_titulo_completo · D-27 la pagina gana
+D-28 lugares de eventos NO se migran · D-30 credito institucional
+B-01 encoding · B-04 accesibilidad · B-05 credencial rotada
+```
+
+```text
+Las razones completas, con cifras y alternativas, estan en docs/decisiones.md
+(33 bloques) y el resumen para decidir en docs/decisiones-pendientes.md.
+```
+
+## 52.9 Seguridad: lo que no debe volver a pasar
+
+```text
+B-05 OCURRIO: el nombre de la base de datos ERA TAMBIEN la contrasena, y se
+escribio en 3 archivos de un repositorio PUBLICO.
+
+No se detecto buscando "password", "token" ni "api key": el secreto se llamaba
+`database`. Un dato cuyo nombre no suena a secreto y lo era por coincidir con
+otro campo.
+```
+
+Ya está rotado y verificado (la credencial anterior **ya no conecta**), pero
+las reglas que deja:
+
+```text
+1. El nombre de la base se escribe <BD_DRUPAL> en TODO lo versionado.
+2. Antes de versionar algo, pregunta no "parece un secreto" sino "coincide
+   este valor con algun secreto".
+3. Los patrones de .gitignore se VERIFICAN con git check-ignore. El patron
+   "sites/*/settings*.php" NO cubria "settings.php.antes-de-rotar-<fecha>",
+   que contenia la clave vieja.
+4. Fuera de Git, sin excepcion: settings.php, services.yml, res-settings.php,
+   wp/, work/, *.otf, jquery.social.stream*, y cualquier derivado de settings.
+5. runmedia.js de udg_liston declara una clave de API de un tercero. NO
+   versionar ni activar sin resolver D-12.
+6. La plantilla trae UN envio de formulario de 2021 con nombre, correo,
+   mensaje e IP de una persona real. No se ha borrado: no corresponde.
+```
+
+## 52.10 Reglas de trabajo que el responsable fijó explícitamente
+
+```text
+Ninguna decision se marca CERRADA solo por su confirmacion. Cada una exige:
+  1. implementada   2. validada   3. documentada
+  4. vinculada al commit   5. reflejada en MIGRATION_CONTRACT.md
+
+Si alguna evidencia contradice una decision ya tomada: DETENTE y reportalo
+ANTES de continuar.
+
+Y la advertencia del auditor, que vale la pena tener delante:
+  "provisional y reversible se esta usando como procedimiento habitual para
+  avanzar sin respuesta, y eso tiene un limite: cada decision provisional
+  acumulada es deuda que alguien tendra que firmar en bloque, sin margen,
+  justo antes del cutover."
+```
+
+## 52.11 Errores propios que conviene recordar
+
+No por penitencia: porque **el mismo tipo de error vuelve** y reconocerlo
+rápido ahorra horas.
+
+```text
+Cifras que afirme y eran falsas:
+  "1 382 slugs duplicados"          -> 347 (contaba revisiones)
+  "7 811 redirecciones"             -> 1 403 reales (6 286 eran bucles)
+  "cero vc_/td_/smartslider"        -> 148, 148 y 9
+  "97.6 % con shortcodes"           -> el regex casaba prosa como "[sic]"
+  "82 GB de uploads"                -> 44.37 GB (mitad era ruido de macOS)
+  "la portada no muestra Gaceta"    -> si la mostraba; mi grep buscaba mal
+  "4 horas para migrar"             -> 45 min (extrapole una medida en frio)
+  "40 de 40 comentarios"            -> el destino tenia 34
+  "0 shortcodes"                    -> quedaban ~200 de otros tipos
+
+Fallos de metodo que los causaron:
+  - medir rendimiento solo en la portada, que viene de la cache de pagina
+  - certificar accesibilidad por las ETIQUETAS de los botones sin comprobar
+    que el script estuviera cargado
+  - deducir el menu del VOLUMEN de contenido en lugar de ir a MIRAR el de
+    produccion, que es manual
+  - comparar en PHP con sensibilidad a mayusculas lo que la base no distingue
+  - deducir el nombre de un metodo en vez de usar get_class_methods
+
+Y lo peor: aplicar D-21 eligiendo lo CONTRARIO de mi propia recomendacion
+escrita, con la decision declarada abierta y sin preguntar.
+```
+
+```text
+LA LECCION OPERATIVA: cuando una cifra sorprenda, VERIFICALA antes de
+reportarla. Y cuando el auditor o el responsable senalen algo, compruebalo en
+lugar de darlo por bueno: la primera vez que verifique el hallazgo de la
+credencial, mi propia comprobacion dijo que NO coincidian, porque comparaba
+campos de bloques distintos. Coincidian.
+```
