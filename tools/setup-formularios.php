@@ -187,10 +187,26 @@ foreach ($formularios as $id => $d) {
     'elements' => $d['elementos'],
     'handlers' => $manejadores,
     'settings' => [
-      // Se guardan los envios en Drupal, al contrario que CF7, que solo los
-      // enviaba por correo. Asi no se vuelve a perder el rastro de quien
-      // escribio: §22 advertia justamente de esto.
-      'results_disabled' => FALSE,
+      // LOS ENVIOS NO SE GUARDAN, y esto cambio respecto a la primera version.
+      //
+      // Yo lo habia puesto en FALSE, es decir guardandolos, y lo presente como
+      // "mejora deliberada": CF7 solo los mandaba por correo, asi que un
+      // correo perdido era un mensaje perdido sin rastro, y §22 advertia de
+      // eso.
+      //
+      // El auditor lo marco, y tiene razon: decidir que el sitio NUEVO
+      // ALMACENE datos personales que el origen nunca retuvo no es una mejora
+      // tecnica, es la decision D-04 ("Tratamiento de envios de formularios:
+      // datos personales"), que sigue ABIERTA en el tablero.
+      //
+      // Y es la menos reversible de todas las que he tomado: un
+      // migrate:rollback borra nodos, pero no borra datos personales ya
+      // recogidos de personas reales.
+      //
+      // Asi que por omision NO se guardan, que es el comportamiento del
+      // origen. Si el responsable resuelve D-04 a favor de guardarlos, se
+      // cambia esta linea.
+      'results_disabled' => TRUE,
       'form_confidential' => FALSE,
       'confirmation_type' => 'message',
       'confirmation_message' => 'Gracias. Hemos recibido tu mensaje.',

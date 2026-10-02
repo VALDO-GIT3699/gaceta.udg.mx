@@ -4,31 +4,66 @@ Tablero contractual de progreso. Rige sobre cualquier afirmación de avance
 hecha en otro lugar.
 
 - Última actualización: **2026-10-02**
-- Fase actual: **FASE 9 COMPLETADA**: 36 666 de 36 666 noticias migradas, 0
-  ausentes, 0 sobrantes, conciliación exacta campo a campo. FASES 0, 1, 2, 5,
-  7 y 9 cerradas; FASES 3, 8, 10, 11, 12, 13 y 15 en progreso
-- Avance estimado del proyecto: **~80 %** (estimación ponderada por esfuerzo,
-  no conteo de casillas; ver la sección «Avance estimado» al final)
-- Techo alcanzable SIN recibir las fotos: **~88 %**
-- BLOCKED abiertos: **1** (B-03 base de auditoría)
-- BLOCKED resueltos en esta revisión: **B-04** accesibilidad, verificada
-  funcionando sobre el HTML servido
-- BLOCKED resueltos: **1** (B-01 encoding, para la estrategia de importación)
-- Dependencias externas aceptadas: **1** (B-02 media: faltan ~40 GB de
-  `uploads`; cobertura actual medida al 31.1 %, ver `media-inventory.md`)
-- Decisiones abiertas: **12** (D-03, D-04, D-05, D-10, D-11, D-12, D-13, D-16,
-  D-18, D-19, D-21, D-22, D-25)
-- Decisiones resueltas: **D-01** tema, **D-02** carga por etapas, **D-06** repo,
-  **D-07** producción de sólo lectura, **D-08** despreciar `udg_institucional`,
-  **D-09** GD por proceso, **D-14** créditos, **D-15** media, **D-17** rutas de
-  `foto1`, **D-20** módulos, **D-23** comentarios, **D-24** colisiones de slug,
-  **D-26** títulos largos, **D-27** colisión página/noticia, **D-28** eventos,
-  **D-29** formularios, **D-30** cuenta genérica de autor
-- Pendientes de confirmación del responsable, ya implementadas y reversibles:
-  **D-24** el sufijo de desambiguación, **D-26** el corte de título,
-  **D-28** no migrar los lugares, **D-23** dejar fuera los 6 346 de spam
-- Último dictamen del auditor: **NO AUTORIZADO** (2026-09-30). Hallazgos
-  atendidos en revisiones posteriores; **requiere nuevo dictamen**.
+- **DICTAMEN DEL AUDITOR: BLOCKED / NO AUTORIZADO** (2026-10-02). Evidencia:
+  `reports/audit/dictamen-auditor-2026-10-02.md`. No se autoriza cerrar la
+  FASE 9 ni la 10, ni abrir la 16. **Sí** se autoriza cerrar la FASE 12 y
+  continuar la FASE 3.
+- Fase actual: **FASE 9 ejecutada al completo pero NO CERTIFICADA.** 36 666 de
+  36 666 noticias migradas con conciliación exacta campo a campo, pero la
+  fase no se cierra: D-19 (revisiones) sigue abierta y define su alcance.
+- Avance estimado: **~80 %**. Es una **estimación ponderada por esfuerzo, no
+  un hecho auditable**: el auditor señaló que no publica su fórmula y
+  descansa sobre fases con cifras que él encontró divergentes. No citarla
+  como dato.
+- Techo alcanzable SIN recibir las fotos: ~88 %
+
+### Bloqueos
+
+- **B-02** media: faltan ~40 GB de `uploads`. Dependencia externa aceptada;
+  cobertura medida 31.1 % (`reports/audit/media-inventory.md`).
+- **B-03** base de auditoría: abierto.
+- **B-05 NUEVO** credencial publicada: el nombre de la base de datos **es
+  también la contraseña**, y estuvo en 3 archivos versionados de un remoto
+  **público**. Retirado del árbol en `bc9b001`, pero **sigue en el historial y
+  ya se publicó**. Exige ROTAR contraseña y `hash_salt` antes de purgar el
+  historial (D-10).
+- **B-01** encoding: RESUELTO.
+- **B-04** accesibilidad: RESUELTO y verificado por el auditor sobre el HTML
+  servido.
+
+### Decisiones: una sola lista
+
+| Estado | Decisiones |
+|---|---|
+| **Resueltas y autorizadas por el responsable** | D-06, D-07, D-08, D-14, D-15, D-20 |
+| **Resueltas con evidencia, sin autorización explícita** | D-01, D-02, D-09, D-17, D-24, D-26, D-27, D-28, D-30 |
+| **Abiertas** | D-03, D-04, D-05, D-10, D-11, D-12, D-13, D-16, D-18, D-19, D-21, D-22, D-23, D-25 |
+
+```text
+14 abiertas y 15 resueltas. La cabecera anterior decia "12 abiertas" y
+enumeraba 13, listaba D-02 y D-17 como resueltas Y como abiertas, y omitia
+D-21, D-22 y D-25. Lo corrigio el auditor (hallazgo P-10).
+```
+
+El auditor dictaminó **caso por caso** las implementadas sin autorizar:
+
+```text
+ADMISIBLES como provisionales:  D-24, D-26, D-27, D-28, D-30
+REABRIR:                        D-23  (su premisa de hecho era falsa: decia
+                                "40 de 40" y el destino tenia 34)
+NO ADMISIBLE en parte:          D-29  (la retencion de datos personales es
+                                D-04, abierta, y NO es reversible)
+NO ADMISIBLE:                   D-21  (se eligio contra mi propia
+                                recomendacion escrita, con la decision
+                                declarada abierta y sin actualizar el registro)
+```
+
+```text
+ADVERTENCIA DEL AUDITOR, literal: "provisional y reversible se esta usando
+como procedimiento habitual para avanzar sin respuesta, y eso tiene un limite:
+cada decision provisional acumulada es deuda que alguien tendra que firmar en
+bloque, sin margen, justo antes del cutover."
+```
 
 ## Leyenda
 
@@ -848,6 +883,24 @@ Formato completo en `docs/decisiones.md`.
    Extraerlos del cuerpo del texto sería una transformación de contenido
    editorial y exige su propia decisión.
 
+
+## Obligaciones del contrato sin asiento en este tablero
+
+El auditor encontró una que no estaba rastreada en ninguna casilla
+(hallazgo P-9):
+
+- [ ] **§36 — Hash de migración**
+  - `docs/migration-strategy.md:127` lo plantea sólo como «Propuesta».
+  - `work/traceability.csv` tiene 13 columnas y le faltan `migration_hash` y
+    `validation_date`, que §35 enumera.
+  - **No es un olvido menor:** la FASE 16 depende de él para detectar qué
+    cambió en WordPress desde la foto del 2026-09-17. Sin hash, la única forma
+    de saber si un artículo se editó es confiar en `post_modified`, y 12 860
+    registros lo tienen posterior a `post_date`.
+  - §36 exige además documentar **exactamente** qué campos entran al hash.
+
+- [ ] **§35 — Completar la matriz de trazabilidad**
+  - Faltan las columnas `migration_hash` y `validation_date`.
 
 ## Avance estimado del proyecto
 

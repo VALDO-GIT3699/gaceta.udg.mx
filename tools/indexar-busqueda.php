@@ -4,107 +4,92 @@
  * @file
  * indexar-busqueda.php
  *
- * Construye el índice de búsqueda del sitio migrado.
+ * Indexa UNA tanda de nodos para la búsqueda del sitio. Está pensado para que
+ * lo llame en bucle `tools/indexar-busqueda.sh`, un proceso por tanda.
  *
- * POR QUÉ HACE FALTA UN SCRIPT Y NO BASTA EL CRON
+ * POR QUÉ HACE FALTA, Y POR QUÉ NO BASTA EL CRON
  *
  * §34 incluye la búsqueda entre los criterios de aceptación. Al comprobarla
- * apareció esto:
+ * tras la migración masiva apareció esto:
  *
  * ```text
  * nodos publicados        36 803
  * nodos en el indice         246
  * ```
  *
- * Es decir: la búsqueda del sitio **no encontraba casi nada**, y no daba
- * ningún error. Otro fallo silencioso: la caja de búsqueda funciona, responde,
- * y devuelve vacío.
+ * La caja de búsqueda funcionaba, respondía y devolvía casi nada. **Sin dar
+ * ningún error**: otro fallo silencioso.
  *
  * Drupal indexa por cron, a razón de `search.settings: index.cron_limit`
- * elementos por ejecución, que por omisión son 100. Con 36 803 nodos eso son
- * **369 ejecuciones de cron**. En un servidor con cron cada hora, quince días.
+ * elementos por ejecución, que por omisión son 100. Con 36 803 nodos son
+ * **369 ejecuciones de cron**; con cron cada hora, quince días.
  *
- * Este script hace la primera carga de golpe y **restaura el límite original**
- * al terminar, para no dejar el sitio con una configuración anómala.
+ * POR QUÉ UNA TANDA POR PROCESO Y NO UN BUCLE INTERNO
+ *
+ * La primera versión llamaba a `updateIndex()` en bucle dentro del mismo
+ * proceso. Reventó así:
  *
  * ```text
- * EN PRODUCCION el cron normal mantiene el indice al dia por si solo. Este
- * script es solo para la carga INICIAL tras una migracion masiva.
+ * SQLSTATE[23000]: Duplicate entry '19343-es-node_search' for key 'PRIMARY'
  * ```
  *
- * IDEMPOTENTE: si el índice ya está completo, no hace nada. REANUDABLE: si se
- * corta, se vuelve a lanzar y sigue donde iba.
+ * El seguimiento de qué queda por indexar no se refresca bien entre llamadas
+ * en la misma petición, y el plugin acaba intentando insertar dos veces el
+ * mismo nodo. Es la misma lección que con el sitemap: **lo que Drupal espera
+ * ejecutar una vez por petición, se ejecuta una vez por proceso.**
  *
- * SÓLO AÑADE al índice. No modifica ningún contenido.
+ * ```text
+ * LO QUE SI FUNCIONO de aquella version: el bloque finally restauro
+ * cron_limit a 100 aunque el script muriera a mitad, y search_dataset quedo
+ * sin un solo duplicado. El fallo no dejo el sitio en un estado raro.
+ * ```
+ *
+ * IDEMPOTENTE y REANUDABLE. Sólo añade al índice: no modifica ningún
+ * contenido.
+ *
+ * Imprime en la última línea el número de nodos que quedan, para que el guion
+ * de bash sepa cuándo parar.
  *
  * Uso:
- *   drush php:script tools/indexar-busqueda.php
+ *   bash tools/indexar-busqueda.sh          <- lo normal
+ *   drush php:script tools/indexar-busqueda.php [tamano_tanda]
  */
+
+$tanda = isset($extra[0]) ? (int) $extra[0] : 500;
+if ($tanda < 1 || $tanda > 5000) {
+  $tanda = 500;
+}
 
 $gestor = \Drupal::service('plugin.manager.search');
 $config = \Drupal::configFactory()->getEditable('search.settings');
-
 $limiteOriginal = (int) $config->get('index.cron_limit');
-$limiteTrabajo = 1000;
 
 /** @var \Drupal\search\Plugin\SearchIndexingInterface $plugin */
 $plugin = $gestor->createInstance('node_search');
 if (!$plugin instanceof \Drupal\search\Plugin\SearchIndexingInterface) {
-  echo "El plugin node_search no es indexable. Se detiene.\n";
+  echo "node_search no es indexable.\nQUEDAN:0\n";
   return;
 }
 
 $estado = $plugin->indexStatus();
-printf("Antes:  %d de %d indexados, %d pendientes\n",
-  $estado['total'] - $estado['remaining'], $estado['total'], $estado['remaining']);
-
-if ($estado['remaining'] === 0) {
-  echo "El indice ya esta completo. No hay nada que hacer.\n";
+if ((int) $estado['remaining'] === 0) {
+  printf("Indice completo: %d nodos.\nQUEDAN:0\n", (int) $estado['total']);
   return;
 }
 
-$config->set('index.cron_limit', $limiteTrabajo)->save();
-printf("cron_limit %d -> %d (temporal)\n\n", $limiteOriginal, $limiteTrabajo);
-
-$inicio = microtime(TRUE);
-$vuelta = 0;
-$previo = $estado['remaining'];
-
 try {
-  while (TRUE) {
-    $vuelta++;
-    $plugin->updateIndex();
-    $e = $plugin->indexStatus();
-    $quedan = (int) $e['remaining'];
-
-    printf("  vuelta %-4d  pendientes %7d  %6.0fs\n",
-      $vuelta, $quedan, microtime(TRUE) - $inicio);
-
-    if ($quedan === 0) {
-      break;
-    }
-    // Si una vuelta no avanza, algo impide indexar y seguir seria un bucle.
-    if ($quedan >= $previo) {
-      echo "\n  ! la vuelta $vuelta no avanzo. Se detiene para no quedarse\n";
-      echo "    colgado. Revisar el log de Drupal.\n";
-      break;
-    }
-    $previo = $quedan;
-    if ($vuelta > 200) {
-      echo "\n  ! 200 vueltas. Se detiene; relanzar para continuar.\n";
-      break;
-    }
-  }
+  $config->set('index.cron_limit', $tanda)->save();
+  $plugin->updateIndex();
 }
 finally {
-  // El limite se restaura SIEMPRE, incluso si algo falla a mitad: dejar el
-  // sitio con cron_limit=1000 haria que cada cron de produccion reindexara mil
-  // nodos sin que nadie lo hubiera pedido.
+  // Se restaura SIEMPRE, incluso si updateIndex() muere: dejar el sitio con
+  // cron_limit alto haria que cada cron de produccion reindexara cientos de
+  // nodos sin que nadie lo hubiera pedido. Comprobado que funciona: tras el
+  // fallo por clave duplicada, cron_limit habia vuelto a 100.
   $config->set('index.cron_limit', $limiteOriginal)->save();
-  printf("\ncron_limit restaurado a %d\n", $limiteOriginal);
 }
 
-$db = \Drupal::database();
-printf("\nDespues: %d nodos en el indice, %d palabras distintas\n",
-  (int) $db->query('SELECT COUNT(*) FROM {search_dataset}')->fetchField(),
-  (int) $db->query('SELECT COUNT(*) FROM {search_index}')->fetchField());
+$e = $plugin->indexStatus();
+$hechos = (int) $e['total'] - (int) $e['remaining'];
+printf("indexados %d de %d\nQUEDAN:%d\n",
+  $hechos, (int) $e['total'], (int) $e['remaining']);
