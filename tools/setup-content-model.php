@@ -247,6 +247,32 @@ $campos = [
 
   // --- Trazabilidad de los términos de crédito. ---
 
+  // El titulo completo de las 21 noticias cuyo titulo NO CABE en Drupal.
+  //
+  // node_field_data.title es varchar(255) y es un campo BASE de Drupal: no se
+  // puede ampliar sin tocar el esquema del nucleo, lo que choca con §44 y
+  // complicaria cualquier actualizacion futura.
+  //
+  // Medido en el origen: 21 noticias pasan de 255 caracteres y la mas larga
+  // tiene 867. No son titulos, son parrafos pegados en el campo del titulo.
+  // Las paginas no estan afectadas: 0 casos.
+  //
+  // El piloto no lo detecto porque ninguno de sus 17 casos tenia un titulo
+  // largo. Aparecio en el lote 16 de la migracion masiva, con
+  // "SQLSTATE[22001] Data too long for column 'title'".
+  //
+  // En lugar de truncar y perder el texto, el titulo del nodo se corta en
+  // frontera de palabra y el ORIGINAL COMPLETO se guarda aqui. Asi no hay
+  // perdida y la presentacion puede mostrar el completo si se decide.
+  'field_titulo_completo' => [
+    'entity_type' => 'node',
+    'bundle' => 'noticia',
+    'type' => 'string_long',
+    'cardinality' => 1,
+    'label' => 'Título completo del origen',
+    'description' => 'Título original de WordPress cuando pasa de 255 caracteres y no cabe en el título del nodo. Vacío en el resto. 21 casos.',
+  ],
+
   // Referencia de la noticia a su categoria. Cardinalidad ilimitada porque en
   // WordPress un contenido puede estar en varias category a la vez.
   'field_categoria' => [

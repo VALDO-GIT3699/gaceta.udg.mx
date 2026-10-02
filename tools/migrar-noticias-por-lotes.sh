@@ -39,6 +39,23 @@ RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
 DRUPAL="$RAIZ/plantilla_drupal/Drudg10.6.9"
 LOTE="${1:-1000}"
 MAX="${2:-60}"
+# Tercer argumento: "update" para REPROCESAR tambien los registros que ya
+# estan en el mapa. Hace falta cuando se anaden campos DESPUES de haber
+# migrado: los nodos ya creados se completan sin borrarlos ni recrearlos.
+#
+# Se anadio porque revertir 16 000 nodos iba a ~150 por minuto, casi una
+# hora, cuando sus alias ya eran correctos y solo faltaban dos campos.
+#
+# OJO, Y ESTO ME COSTO CUATRO LOTES TIRADOS: en modo update NO se trocea con
+# --limit. Sin --update, Migrate salta lo que ya esta en el mapa y cada lote
+# avanza; CON --update no salta nada, asi que "--limit 1000" reprocesa las
+# MISMAS mil primeras filas en cada vuelta y el mapa no crece nunca. Se veia
+# en la bitacora como "0 created, 1000 updated" repetido con el total
+# clavado. Por eso el modo update ejecuta UNA sola pasada sin limite.
+EXTRA=""
+if [ "${3:-}" = "update" ]; then
+  EXTRA="--update"
+fi
 BITACORA="$RAIZ/work/fase9-bitacora.txt"
 
 mkdir -p "$RAIZ/work"
@@ -78,7 +95,12 @@ previo="${inicial:-0}"
 
 for ((i = 1; i <= MAX; i++)); do
   t0=$(date +%s)
-  salida=$("${DRUSH[@]}" migrate:import gaceta_noticia --limit="$LOTE" 2>&1 | tr -d '\r')
+  if [ -n "$EXTRA" ]; then
+    # Una sola pasada, sin --limit. Ver la nota de arriba.
+    salida=$("${DRUSH[@]}" migrate:import gaceta_noticia "$EXTRA" 2>&1 | tr -d '\r')
+  else
+    salida=$("${DRUSH[@]}" migrate:import gaceta_noticia --limit="$LOTE" 2>&1 | tr -d '\r')
+  fi
   t1=$(date +%s)
 
   # La linea de resumen de drush: "Processed N items (A created, B updated,
@@ -105,11 +127,28 @@ for ((i = 1; i <= MAX; i++)); do
     exit 2
   fi
 
-  if [ "$avance" -eq 0 ]; then
+  # Con --update el mapa NO crece al reprocesar, asi que un avance de 0 no
+  # significa que haya terminado. En ese modo el fin se detecta por los
+  # items procesados.
+  # El modo update es una pasada unica: termina aqui, no itera.
+  if [ -n "$EXTRA" ]; then
+    break
+  fi
+
+  # El fin se detecta por los ITEMS PROCESADOS, no por el crecimiento del mapa.
+  #
+  # Usar el tamano del mapa fue un error que paro la migracion en falso dos
+  # veces: una pasada --update interrumpida deja filas marcadas como "necesita
+  # actualizacion", y un import normal las REPROCESA antes de seguir con las
+  # nuevas. El mapa no crece, pero si hay trabajo hecho y quedan registros por
+  # crear. La bitacora lo delataba: "0 created, 1000 updated" y total clavado.
+  procesados=$(echo "$resumen" | grep -oE 'Processed [0-9]+' | grep -oE '[0-9]+')
+  procesados="${procesados:-0}"
+  if [ "$procesados" -eq 0 ]; then
     {
       echo ""
-      echo "FIN: el lote $i no migro ningun registro nuevo."
-      echo "No quedan registros sin procesar, o algo impide el avance."
+      echo "FIN: el lote $i no proceso ningun registro."
+      echo "No quedan registros pendientes."
     } | tee -a "$BITACORA"
     break
   fi

@@ -70,6 +70,11 @@ $presentacion = [
     'formateador' => 'entity_reference_label',
     'etiqueta' => 'inline',
   ],
+  'field_categoria' => [
+    'peso' => 19,
+    'formateador' => 'entity_reference_label',
+    'etiqueta' => 'inline',
+  ],
   'field_seccion' => [
     'peso' => 20,
     'formateador' => 'entity_reference_label',
@@ -94,6 +99,14 @@ foreach ($presentacion as $campo => $d) {
     $campo, $d['peso'], $d['formateador']);
 }
 
+// El titulo completo se OCULTA en la presentacion: el titulo del nodo ya lo
+// muestra cortado y repetir el parrafo entero debajo seria ruido. El dato
+// sigue en la base y en el formulario, que es lo que exige no perderlo.
+// Afecta a 21 de 36 666 noticias.
+$vista->removeComponent('field_titulo_completo');
+echo "  - oculto en el nodo:  field_titulo_completo (21 casos, dato preservado)
+";
+
 // Trazabilidad: oculta al lector, pero el dato sigue en la base.
 foreach (['field_wp_post_id', 'field_wp_original_id'] as $campo) {
   $vista->removeComponent($campo);
@@ -114,6 +127,10 @@ $formulario = [
   'field_autor_texto' => ['peso' => 12, 'widget' => 'entity_reference_autocomplete_tags'],
   'field_credito_fotografia' => ['peso' => 13, 'widget' => 'entity_reference_autocomplete_tags'],
   'field_colaboradores' => ['peso' => 14, 'widget' => 'entity_reference_autocomplete_tags'],
+  'field_categoria' => ['peso' => 15, 'widget' => 'entity_reference_autocomplete_tags'],
+  // Visible en el formulario para que un editor pueda recuperar el titulo
+  // original de las 21 noticias cuyo titulo no cabia.
+  'field_titulo_completo' => ['peso' => 16, 'widget' => 'string_textarea'],
   // Los de trazabilidad SÍ se muestran en el formulario, para que un editor
   // pueda consultar de dónde vino el contenido sin pedir acceso a la base.
   'field_wp_post_id' => ['peso' => 50, 'widget' => 'number'],
