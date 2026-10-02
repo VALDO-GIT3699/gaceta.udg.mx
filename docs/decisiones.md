@@ -2053,3 +2053,117 @@ en la portada?
 duplicados que son **previos a este proyecto**: `/form/contact` y tres rutas
 hermanas, todas de la propia plantilla, con 3 y 4 duplicados cada una. No se
 tocan sin autorización (§44). Quedan reportados para que consten.
+
+---
+
+## D-26 — 21 títulos no caben en el título de Drupal
+
+```text
+IMPLEMENTADA SIN PERDIDA. Reversible.
+Fecha: 2026-10-01
+Evidencia: el lote 16 de work/fase9-bitacora.txt; tools/setup-content-model.php
+```
+
+**Contexto.** El lote 16 de la migración masiva reportó `1 failed` y el
+ejecutor se detuvo, como exige la FASE 9.
+
+```text
+SQLSTATE[22001]: String data, right truncated: 1406
+Data too long for column 'title'
+```
+
+**Datos confirmados.**
+
+```text
+CONFIRMADO: 21 de 36 666 noticias pasan de 255 caracteres.
+CONFIRMADO: la mas larga tiene 867 caracteres.
+CONFIRMADO: reparto  256-300: 8   301-400: 5   mas de 400: 8
+CONFIRMADO: las paginas NO estan afectadas. 0 casos.
+```
+
+No son títulos: son párrafos pegados en el campo del título por quien publicó.
+
+```text
+POR QUE EL PILOTO NO LO VIO: ninguno de sus 17 casos tenia un titulo largo.
+El piloto cubrio los casos que se habian PREVISTO, y este no estaba entre
+ellos. Lo encontro el guardia de la migracion masiva, no la muestra.
+```
+
+**Problema.** `node_field_data.title` es `varchar(255)` y es un campo **base**
+del núcleo de Drupal.
+
+**Opción A — ampliar la columna del núcleo.** Obliga a tocar el esquema de
+Drupal. Choca con §44 y complica cualquier actualización futura del núcleo.
+
+**Opción B — truncar y perder el resto.** Viola el mandato de no pérdida.
+
+**Opción C — truncar el título del nodo y preservar el original completo en un
+campo propio.**
+
+**Razón técnica.** Opción C. El título del nodo se corta en **frontera de
+palabra** y el original completo va a `field_titulo_completo`. Se retrocede a
+la frontera sólo si no deja el título en un muñón: por debajo de 200
+caracteres se prefiere el corte seco.
+
+```text
+PROBADO contra los 21 titulos reales: los 21 caben bajo 255, cortados por
+palabra. CONTROL con un titulo normal: intacto, y campo completo vacio.
+```
+
+**Impacto.** 21 nodos muestran su título cortado con un carácter de elisión. El
+texto completo está en la base, visible en el formulario de edición y
+consultable por SQL. El campo se **oculta** en la presentación del nodo: el
+título ya se muestra cortado y repetir el párrafo entero debajo sería ruido.
+
+**Riesgo.** Ninguno de pérdida. Es reversible: cambiar el criterio y reimportar.
+
+**Quién autorizó.** Nadie: se eligió la única opción que no pierde texto ni
+toca el núcleo. Queda para revisión.
+
+**Pregunta.** ¿Se prefiere que esos 21 nodos muestren el título completo en la
+presentación, aunque ocupe un párrafo? Hoy se muestra cortado.
+
+---
+
+## D-27 — Tres URLs las reclaman una página y una noticia
+
+```text
+RESUELTA CONTRA PRODUCCION E IMPLEMENTADA
+Fecha: 2026-10-01
+Evidencia: reports/audit/url-collisions.md, tools/validar-alias-unicos.php
+```
+
+**Contexto.** Extiende D-24. Al reprocesar, el validador detectó duplicados que
+no venían de dos noticias, sino de una **noticia y una página**.
+
+**Datos confirmados.** Son exactamente tres, enumerados:
+
+```text
+contacto                        page 493    post 38620
+dia-mundial-del-medio-ambiente  page 89199  post 47744
+dia-internacional-de-la-mujer   page 98401  post 26714
+
+CONFIRMADO: cero colisiones entre paginas. 170 slugs para 170 paginas.
+```
+
+Mi mapa de colisiones filtraba `post_type = 'post'`, así que las páginas
+quedaban fuera y la noticia recibía el alias sin desambiguar.
+
+**Verificado contra producción** (§46, lectura):
+
+```text
+/contacto/                        sirve la PAGINA, con sus formularios
+/dia-mundial-del-medio-ambiente/  sirve la PAGINA, una portadilla
+```
+
+Es el comportamiento propio de WordPress con `/%postname%/`: la regla de
+reescritura de página se evalúa antes que la de entrada.
+
+**Razón técnica.** La página conserva la ruta **exacta** y la noticia se
+desambigua, siempre, aunque la noticia fuera ganadora de su propio grupo. No
+es un criterio elegido: es el que produccción ya aplica. Trazado como
+`desambiguado_vs_pagina`.
+
+**Impacto.** 3 noticias cambian de URL. Las 3 rutas vivas se preservan.
+
+**Riesgo.** Ninguno. Son 3 casos enumerados y verificados uno a uno.
