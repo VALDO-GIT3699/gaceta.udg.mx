@@ -2511,3 +2511,131 @@ regulares.
 Mientras no haya respuesta NO se convierte nada mas. El auditor pidio detener
 la propagacion y la propagacion esta detenida.
 ```
+
+---
+
+## D-16 — RESUELTA: las 312 redirecciones inertes se retiran
+
+```text
+ESTADO: IMPLEMENTADA, VALIDADA Y DOCUMENTADA
+Fecha: 2026-10-02
+Quién autorizó: el responsable, explícitamente, tras el reporte del conflicto.
+Commit: ver el que acompaña a este bloque.
+```
+
+### El problema, descubierto por la prueba de humo
+
+La prueba de humo falló con un caso: una redirección devolvía **200 en lugar de
+301**. Al medirlo:
+
+```text
+CONFIRMADO: 1 406 redirecciones creadas
+            312 cuya ruta de origen ES TAMBIEN un alias vivo
+            308 de esas apuntaban a un articulo DISTINTO del que sirve el alias
+```
+
+Drupal resuelve los **alias antes que las redirecciones**, así que esas 312
+nunca se disparaban.
+
+### Lo decisivo: Drupal ya hacía lo correcto
+
+Verificado contra producción (§46, lectura):
+
+| | `/la-naturaleza-en-trazos/` |
+|---|---|
+| Producción | sirve el artículo del **2019-07-08**, SIN redirigir |
+| Drupal | sirve WP 50826, «La naturaleza en trazos», **2019-07-07** |
+| La redirección apuntaba a | WP 654, «La Naturaleza en trazos», 2019-10-03 |
+
+Coinciden. **El dueño actual del slug gana en los dos sistemas**, porque
+`wp_old_slug_redirect()` de WordPress sólo actúa si la consulta no devuelve
+nada.
+
+```text
+Asi que la redireccion no solo era inutil: era un RIESGO LATENTE. Si algun dia
+ese alias desapareciera, 308 de ellas se despertarian y mandarian al visitante
+al articulo EQUIVOCADO. No a un 404: a contenido incorrecto, que es peor.
+```
+
+### Lo implementado
+
+No se borraron filas a mano. Se corrigió el **origen** y se rehízo la migración
+completa, para que el resultado salga del código y no de una limpieza manual:
+
+```text
+GacetaRedireccion::cargarOcupadas()  descarta la ruta vieja que ya es el slug
+                                     ACTUAL de algun contenido
+
+ANTES:  1 406 redirecciones,  312 inertes
+AHORA:  1 090 redirecciones,    0 inertes,  1 090 con codigo 301
+```
+
+Conciliación de la ejecución: `7 792 procesadas, 1 090 creadas, 0 fallidas,
+6 702 descartadas` = 6 286 bucles + 100 perdedores de conflicto + 316 ocupadas.
+
+### La comprobación se hace EN SQL, y ésa es la lección
+
+```text
+Al predecir en PHP cuantas eran inertes, mi normalizador dijo 308 y la base
+decia 312. Los 4 que faltaban contenian "š", que utf8_general_ci pliega a "s"
+y mi mapa de diacriticos no cubria. Son mojibake de vocal acentuada:
+"ENEMIGOS-PíšBLICOS" es "ENEMIGOS-PUBLICOS".
+```
+
+Un mapa de caracteres escrito a mano **siempre** se queda corto frente a una
+colación: al inventariar los slugs aparecen `“ ” ‘ ¿ ¡ € ´ … ¼`, controles
+U+0081 y U+008D, y espacios duros.
+
+```text
+REGLA QUE QUEDA ESCRITA EN NormalizaTexto: cuando la comparacion se pueda hacer
+EN SQL, con la colacion de la propia base, HAZLA EN SQL. Es correcta por
+construccion y no hay mapa que mantener.
+```
+
+El mapa se amplió igualmente con las letras que sí aparecen (`š ž œ æ ø đ ł`),
+pero con una advertencia explícita de que **aproxima** la colación y no la
+sustituye.
+
+### Cinco casos que parecían una divergencia y no lo eran
+
+Al cuadrar las cifras quedaban 5 rutas ocupadas en WordPress sin alias
+aparente en Drupal. Podrían haber sido rutas que producción sirve y Drupal
+deja en 404. Se comprobaron **una a una**, pidiéndolas:
+
+```text
+/La-caida-de-los-gigantes                 Drupal 301   (funciona)
+/Lombrices-una-alternativa-ecologica-Â    Drupal 301   (funciona)
+/Los-movimientos-sociales-en-la-miraÂ     Drupal 301   (funciona)
+/Victor-Arturo-Lopez-Moreno               Drupal 404  ->  PRODUCCION 404
+/AFORISMOS-DE-ZíœRAU                      Drupal 404  ->  PRODUCCION 404
+```
+
+```text
+NO HAY DIVERGENCIA: en los 5 casos Drupal se comporta igual que produccion.
+Las dos que dan 404 lo dan tambien alli.
+```
+
+El aparente desajuste venía de **mi** consulta: comparaba en PHP con
+sensibilidad a mayúsculas, y la base no distingue. `temporada-de-verano`
+contra `/Temporada-de-verano` parecía no coincidir y para MySQL es el mismo
+valor.
+
+### Validación
+
+```text
+prueba-humo.sh                    29 comprobaciones, 0 fallos
+validar-destino-migraciones.php   gaceta_redireccion 1 090 / 1 090 / 0 huerfanos
+validar-alias-unicos.php          0 filas redundantes; 1 conflicto: /inicio (D-25)
+```
+
+### Registro de lo retirado
+
+```text
+work/d16-redirecciones-inertes.csv        las 312, con meta_id, destino y motivo
+work/d16-redirecciones-inertes-idlist.txt la lista de ids de origen
+```
+
+Quedan en `work/`, fuera de Git, porque llevan rutas de artículo (§37, D-06).
+Y en cualquier caso **nada se destruye**: las entradas siguen en
+`dc8_postmeta._wp_old_slug` del volcado original, así que la decisión es
+reversible cambiando una condición en el origen y reimportando.

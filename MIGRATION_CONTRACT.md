@@ -38,14 +38,19 @@ hecha en otro lugar.
 
 | Estado | Decisiones |
 |---|---|
-| **Resueltas y autorizadas por el responsable** | D-06, D-07, D-08, D-14, D-15, D-20 |
+| **Resueltas y autorizadas por el responsable** | D-06, D-07, D-08, D-14, D-15, D-16, D-19, D-20, D-21, D-24, D-26, D-27, D-28, D-30, **B-05** |
 | **Resueltas con evidencia, sin autorización explícita** | D-01, D-02, D-09, D-17, D-24, D-26, D-27, D-28, D-30 |
-| **Abiertas** | D-03, D-04, D-05, D-10, D-11, D-12, D-13, D-16, D-18, D-19, D-21, D-22, D-23, D-25 |
+| **Abiertas** | D-03, D-04, D-05, D-10, D-11, D-12, D-13, D-18, D-22, D-25 |
 
 ```text
-14 abiertas y 15 resueltas. La cabecera anterior decia "12 abiertas" y
-enumeraba 13, listaba D-02 y D-17 como resueltas Y como abiertas, y omitia
-D-21, D-22 y D-25. Lo corrigio el auditor (hallazgo P-10).
+10 abiertas y 19 resueltas, tras las confirmaciones del responsable del
+2026-10-02. Antes eran 14 y 15.
+```
+
+```text
+D-23 se REABRIO por indicacion del auditor (su premisa de hecho era falsa) y
+vuelve a estar resuelta: los 6 comentarios perdidos se recuperaron y la
+verificacion da 40 de 40 con 0 huerfanos.
 ```
 
 El auditor dictaminó **caso por caso** las implementadas sin autorizar:
